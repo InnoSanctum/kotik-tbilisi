@@ -1,4 +1,4 @@
-var mas = ["kotik_photo.jpg","1.jpg","2.jpg","3.jpg","4.jpg","5.jpg","6.jpg","qr_code.png"] // массив картинок
+var mas = ["assets/kotik_photo.jpg","assets/1.jpg","assets/2.jpg","assets/3.jpg","assets/4.jpg","assets/5.jpg","assets/6.jpg","assets/qr_code.png"] // массив картинок
 var to = -1;  // Счетчик, указывающий на текущую картинки
 
 function right_arrow() // Открытие следующей картинки(движение вправо)

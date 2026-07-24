@@ -10,6 +10,8 @@
     <link rel="alternate icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
     <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
     <meta name="theme-color" content="#4f46e5">
+    <!-- First gallery photo (media.js item 0): start downloading it with the page. -->
+    <link rel="preload" as="image" href="media/kotik-2026-03-12.webp">
     <!-- FontAwesome icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Fonts -->
@@ -37,6 +39,13 @@
             box-sizing: border-box;
             margin: 0;
             padding: 0;
+        }
+
+        /* The UA rule for [hidden] is display:none, but any author "display"
+           rule outranks it -- .gallery-nav{display:flex} would keep hidden
+           elements on screen. Make the attribute actually mean hidden. */
+        [hidden] {
+            display: none !important;
         }
 
         body {
@@ -190,27 +199,27 @@
             font-weight: 700;
         }
 
+        /* Thumb strip. Built by assets/gallery.js from media.js, so the
+           column count has to survive any number of items. */
         .thumbs {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
             gap: 10px;
             margin-top: 12px;
         }
 
         .thumb-item {
+            position: relative;
             height: 70px;
             border-radius: 8px;
             overflow: hidden;
             cursor: pointer;
             border: 2px solid transparent;
             opacity: 0.7;
-            transition: all 0.2s;
+            transition: opacity 0.2s, border-color 0.2s;
             background: #cbd5e1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--text-muted);
-            font-size: 1.2rem;
+            padding: 0;
+            font: inherit;
         }
 
         .thumb-item.active, .thumb-item:hover {
@@ -218,10 +227,68 @@
             opacity: 1;
         }
 
+        .thumb-item:focus-visible {
+            outline: 3px solid var(--primary);
+            outline-offset: 2px;
+            opacity: 1;
+        }
+
         .thumb-item img {
             width: 100%;
             height: 100%;
             object-fit: cover;
+            display: block;
+        }
+
+        /* Play marker over video / YouTube thumbs */
+        .thumb-badge {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(15, 23, 42, 0.35);
+            color: #ffffff;
+            font-size: 1rem;
+            pointer-events: none;
+        }
+
+        /* Only ever seen by whoever opens index.html straight from disk;
+           visitors on GitHub Pages never hit this path. */
+        .gallery-tip {
+            margin-top: 12px;
+            padding: 12px 14px;
+            background: #fffbeb;
+            border: 1px solid #fcd34d;
+            border-radius: var(--radius-md);
+            color: #92400e;
+            font-size: 0.82rem;
+            line-height: 1.5;
+        }
+
+        .gallery-tip code {
+            display: inline-block;
+            background: #fff7ed;
+            border: 1px solid #fdba74;
+            border-radius: 6px;
+            padding: 1px 6px;
+            font-size: 0.8rem;
+            user-select: all;
+        }
+
+        .gallery-counter {
+            position: absolute;
+            bottom: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(8px);
+            color: #ffffff;
+            padding: 3px 12px;
+            border-radius: 20px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            pointer-events: none;
         }
 
         .info-card {
@@ -461,7 +528,7 @@
 
         .doc-icon {
             font-size: 1.5rem;
-            color: #ef4444;
+            color: var(--primary);
         }
 
         .doc-text {
@@ -521,11 +588,63 @@
 }
 
 /* Правильное масштабирование картинок разного размера */
-.img-wrapper img {
+.img-wrapper img,
+.img-wrapper video {
     width: 100%;
     height: 100%;
     object-fit: contain; /* Картинка полностью поместится без искажений и обрезки */
     /* Если хотите, чтобы картинка заполняла всё пространство без пустых полей — замените contain на cover */
+}
+
+.img-wrapper video {
+    background: #000;
+}
+
+.img-wrapper iframe {
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+
+/* YouTube "facade": just a poster + a play button. The real iframe (and its
+   ~1 MB of player JS and cookies) is only inserted once someone clicks. */
+.yt-facade {
+    width: 100%;
+    height: 100%;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    background-color: #000;
+    background-size: cover;
+    background-position: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.yt-play {
+    position: relative;
+    width: 68px;
+    height: 48px;
+    border-radius: 12px;
+    background: rgba(15, 23, 42, 0.75);
+    transition: background 0.2s;
+}
+
+.yt-play::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border-style: solid;
+    border-width: 10px 0 10px 17px;
+    border-color: transparent transparent transparent #ffffff;
+}
+
+.yt-facade:hover .yt-play,
+.yt-facade:focus-visible .yt-play {
+    background: #dc2626;
 }
 
 /* Позиционируем блок с кнопками строго внизу контейнера */
@@ -542,16 +661,36 @@
 
 /* Стили для самих стрелок */
 .nav-btn {
-    width: 50px !important;
-    height: 50px !important;
+    width: 50px;
+    height: 50px;
+    padding: 0;
+    border: none;
+    background: transparent;
     cursor: pointer;
     pointer-events: auto; /* Возвращаем кликабельность кнопкам */
     transition: transform 0.2s ease;
 	border-radius: 10px;
 }
 
+.nav-btn img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    border-radius: 10px;
+}
+
 .nav-btn:hover {
     transform: scale(1.1); /* Легкий эффект при наведении */
+}
+
+.nav-btn:focus-visible {
+    outline: 3px solid #ffffff;
+    outline-offset: 2px;
+}
+
+.gallery-card:focus-visible {
+    outline: 3px solid var(--primary);
+    outline-offset: 4px;
 }
 		
     </style>
@@ -575,34 +714,41 @@
 
         <div class="hero-grid">
 
-            <div class="gallery-card">
+            <!-- Gallery contents come from media.js via assets/gallery.js.
+                 The photo below is the first item of that list, hard-coded so
+                 it paints with the page. Change the first entry of media.js and
+                 this <img> (plus the preload in <head>) has to change too --
+                 python tools/check_site.py will tell you if they drift apart. -->
+            <div class="gallery-card" tabindex="0" role="group"
+                 aria-roledescription="carousel" aria-label="Фотогалерея Котика">
                 <div class="main-img-container">
 
                     <div class="badge-location">
                         <i class="fa-solid fa-location-dot"></i> <span id="badge-location">Тбилиси</span>
                     </div>
                     <span class="badge-status" id="status-badge">Нужна помощь</span>
-                    
-						 <div class="img-wrapper">
-							<img src="assets/kotik_photo.jpg" loading="eager" decoding="async" id="img" alt="Gallery Image">
-						</div>
-        
-						<!-- Блок с кнопками управления -->
-						<div class="gallery-nav">
-							<img src="assets/left_arrow.png" class="nav-btn" onClick="left_arrow()" alt="Prev" /> 
-							<img src="assets/right_arrow.png" class="nav-btn" onClick="right_arrow()" alt="Next" />
-						</div>
-												
-                </div>
-                
-                <div class="thumbs">
-                    <div class="thumb-item" title="Новые фото">
-                        <i class="fa-solid fa-camera"></i>
+
+                    <div class="img-wrapper" id="gallery-stage">
+                        <img src="media/kotik-2026-03-12.webp" loading="eager" decoding="async"
+                             id="img" alt="Котик спит, свернувшись клубком, на пледе">
                     </div>
-                    <div class="thumb-item" title="Новые видео">
-                        <i class="fa-solid fa-video"></i>
+
+                    <!-- Блок с кнопками управления -->
+                    <div class="gallery-nav">
+                        <button type="button" class="nav-btn" id="gallery-prev" aria-label="Предыдущее фото">
+                            <img src="assets/left_arrow.png" alt="" aria-hidden="true">
+                        </button>
+                        <button type="button" class="nav-btn" id="gallery-next" aria-label="Следующее фото">
+                            <img src="assets/right_arrow.png" alt="" aria-hidden="true">
+                        </button>
                     </div>
+
+                    <div class="gallery-counter" id="gallery-counter" aria-live="polite">1 / 7</div>
+
                 </div>
+
+                <!-- Thumb strip is generated from media.js -->
+                <div class="thumbs" id="gallery-thumbs"></div>
             </div>
 
             <div class="info-card">
@@ -686,7 +832,7 @@
 
             <div class="docs-grid">
                 <a href="assets/blood_test.png" target="_blank" class="doc-link">
-                    <i class="fa-solid fa-file-pdf doc-icon"></i>
+                    <i class="fa-solid fa-file-image doc-icon"></i>
                     <div class="doc-text">
                         <span class="doc-title" id="doc1-title">Анализ крови (27.06)</span>
                         <span class="doc-sub" id="doc1-sub">Клиника ZooFamily</span>
@@ -694,7 +840,7 @@
                 </a>
 
                 <a href="assets/vet_recommendation.png" target="_blank" class="doc-link">
-                    <i class="fa-solid fa-file-pdf doc-icon"></i>
+                    <i class="fa-solid fa-file-image doc-icon"></i>
                     <div class="doc-text">
                         <span class="doc-title" id="doc2-title">Назначения врача</span>
                         <span class="doc-sub" id="doc2-sub">Рекомендации</span>
@@ -715,7 +861,9 @@
     <footer>
         <p>© 2026 Сбор средств для кота Котика (Тбилиси). Все документы подтверждены ветеринарной клиникой ZooFamily.</p>
     </footer>
-	<script src="assets/gal.js"></script>
+    <!-- media.js defines window.KOTIK_MEDIA and must load before gallery.js -->
+    <script src="media.js"></script>
+    <script src="assets/gallery.js"></script>
     <script>
         const translations = {
             ru: {
@@ -732,6 +880,8 @@
                 donateDesc: "Любая сумма поможет оплатить предстоящую чистку зубов под седацией, УЗИ и необходимые медикаменты.",
                 donateBtnText: "Перевести в Bank of Georgia",
                 qrCaption: "Сканируйте QR для быстрого перевода",
+                galleryPrev: "Предыдущее фото",
+                galleryNext: "Следующее фото",
                 medTitle: "Медицинский статус и план",
                 m1Title: "Анализы крови & Осмотр",
                 m1Desc: "Оплачено владельцем. Выявлен ВИК, воспаление (WBC 23.2).",
@@ -747,9 +897,9 @@
                 m4Badge: "Требуется",
                 docsTitle: "Документы и анализы",
                 doc1Title: "Анализ крови (27.06)",
-                doc1Sub: "PDF • Клиника ZooFamily",
+                doc1Sub: "Клиника ZooFamily",
                 doc2Title: "Назначения врача",
-                doc2Sub: "PDF • Рекомендации",
+                doc2Sub: "Рекомендации",
                 musicTitle: "Благотворительные выступления",
                 musicDesc: "В ближайшее время я планирую проводить небольшие акустические выступления (играю на гитаре и пою) на улицах и площадках Тбилиси в поддержку сбора средств для Котика. Следите за обновлениями и новыми фото/видео на этой странице!"
             },
@@ -767,6 +917,8 @@
                 donateDesc: "Any amount will help cover upcoming dental cleaning under sedation, ultrasound, and care.",
                 donateBtnText: "Donate via Bank of Georgia",
                 qrCaption: "Scan QR code to donate easily",
+                galleryPrev: "Previous photo",
+                galleryNext: "Next photo",
                 medTitle: "Medical Status & Plan",
                 m1Title: "Blood Tests & Initial Exam",
                 m1Desc: "Paid by owner. Diagnosed with FIV & inflammation (WBC 23.2).",
@@ -782,9 +934,9 @@
                 m4Badge: "Needed",
                 docsTitle: "Vet Documents & Reports",
                 doc1Title: "Blood Test Results",
-                doc1Sub: "PDF • ZooFamily Clinic",
+                doc1Sub: "ZooFamily Clinic",
                 doc2Title: "Vet Prescriptions",
-                doc2Sub: "PDF • Medical Plan",
+                doc2Sub: "Medical plan",
                 musicTitle: "Charity Guitar Performances",
                 musicDesc: "I plan to perform street acoustic music sets (singing and playing guitar) around Tbilisi to help raise funds for Kotik. Stay tuned for new updates, photos, and video clips on this page!"
             },
@@ -802,6 +954,8 @@
                 donateDesc: "ნებისმიერი თანხა დაგვეხმარება სტომატოლოგიური პროცედურისა და ექოსკოპიის დაფინანსებაში.",
                 donateBtnText: "გადარიცხვა Bank of Georgia-ში",
                 qrCaption: "დაასკანერეთ QR კოდი სწრაფი გადარიცხვისთვის",
+                galleryPrev: "წინა ფოტო",
+                galleryNext: "შემდეგი ფოტო",
                 medTitle: "სამედიცინო სტატუსი და გეგმა",
                 m1Title: "სისხლის ანალიზი და გასინჯვა",
                 m1Desc: "გადახდილია. გამოვლინდა FIV და ანთება (WBC 23.2).",
@@ -817,9 +971,9 @@
                 m4Badge: "საჭიროა",
                 docsTitle: "დოკუმენტები და ანალიზები",
                 doc1Title: "სისხლის ანალიზი (27.06)",
-                doc1Sub: "PDF • კლინიკა ZooFamily",
+                doc1Sub: "კლინიკა ZooFamily",
                 doc2Title: "ექიმის დანიშნულება",
-                doc2Sub: "PDF • რეკომენდაციები",
+                doc2Sub: "რეკომენდაციები",
                 musicTitle: "საქველმოქმედო გამოსვლები",
                 musicDesc: "უახლოეს მომავალში ვგეგმავ მცირე აკუსტიკურ გამოსვლებს (გიტარაზე დაკვრა და სიმღერა) თბილისში კოტიკის მხარდასაჭერად. ადევნეთ თვალი სიახლეებს!"
             }
@@ -871,6 +1025,20 @@
             }
 
             document.documentElement.lang = lang;
+
+            /* Gallery alt text lives in media.js, one string per language. */
+            if (window.KotikGallery) window.KotikGallery.setLang(lang);
+
+            /* Labels that are attributes rather than text nodes. */
+            const aria = {
+                'gallery-prev': t.galleryPrev,
+                'gallery-next': t.galleryNext
+            };
+            for (const id in aria) {
+                const el = document.getElementById(id);
+                if (el && aria[id]) el.setAttribute('aria-label', aria[id]);
+            }
+
             try { localStorage.setItem('kotik-lang', lang); } catch (e) {}
         }
 

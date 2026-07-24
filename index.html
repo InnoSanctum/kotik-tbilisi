@@ -127,11 +127,12 @@
 
         .main-img-container {
             position: relative;
-            width: 100%;
-            height: 380px;
+            width: 480px;
+            height: auto;
             border-radius: var(--radius-md);
             overflow: hidden;
             background: #e2e8f0;
+			
         }
 
         .main-img-container img {
@@ -489,6 +490,50 @@
             font-size: 0.85rem;
             margin-top: 3rem;
         }
+		
+		.img-wrapper {
+    width: 100%;
+    height: 480px; /* Задайте нужную вам максимальную высоту (например, 360px или 400px) */
+    overflow: hidden;
+    display: flex;
+    align-items: center; /* Центрируем более низкие картинки по вертикали */
+    justify-content: center;
+}
+
+/* Правильное масштабирование картинок разного размера */
+.img-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain; /* Картинка полностью поместится без искажений и обрезки */
+    /* Если хотите, чтобы картинка заполняла всё пространство без пустых полей — замените contain на cover */
+}
+
+/* Позиционируем блок с кнопками строго внизу контейнера */
+.gallery-nav {
+    position: absolute;
+    bottom: 10px; /* Отступ от нижнего края картинки */
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: space-between; /* Кнопки разойдутся по краям. Если нужно рядом по центру — используйте center */
+    padding: 0 20px; /* Отступы от краев слева и справа */
+    pointer-events: none; /* Чтобы блок не мешал кликать по картинке */
+}
+
+/* Стили для самих стрелок */
+.nav-btn {
+    width: 50px !important;
+    height: 50px !important;
+    cursor: pointer;
+    pointer-events: auto; /* Возвращаем кликабельность кнопкам */
+    transition: transform 0.2s ease;
+	border-radius: 10px;
+}
+
+.nav-btn:hover {
+    transform: scale(1.1); /* Легкий эффект при наведении */
+}
+		
     </style>
 </head>
 <body>
@@ -512,20 +557,20 @@
             <div class="gallery-column">
                 <div class="gallery-card">
                     <div class="main-img-container">
-                        <center>
-							<img src = "" width = "640" height = "480"  id = "img" > </img> <br />
-							<img src = "assets/left_arrow.png"   onClick = "javascript: left_arrow()" /> 
-							<img src = "assets/right_arrow.png"  onClick = "javascript: right_arrow()" />
-						</center>
+                        
+						 <div class="img-wrapper">
+							<img src="assets\kotik_photo.jpg" id="img" alt="Gallery Image">
+						</div>
+            
+						<!-- Блок с кнопками управления -->
+						<div class="gallery-nav">
+							<img src="assets/left_arrow.png" class="nav-btn" onClick="left_arrow()" alt="Prev" /> 
+							<img src="assets/right_arrow.png" class="nav-btn" onClick="right_arrow()" alt="Next" />
+						</div>
+												
                     </div>
                     
                     <div class="thumbs">
-                        <div class="thumb-item active" onclick="switchPhoto('assets/kotik_photo.jpg', this)">
-                            <img src="assets/kotik_photo.jpg" alt="Kotik Photo 1">
-                        </div>
-                        <div class="thumb-item" onclick="switchPhoto('assets/qr_code.png', this)">
-                            <img src="assets/qr_code.png" alt="Bank QR">
-                        </div>
                         <div class="thumb-item" title="Новые фото">
                             <i class="fa-solid fa-camera"></i>
                         </div>

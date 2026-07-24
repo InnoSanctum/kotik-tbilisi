@@ -124,7 +124,23 @@ for dead in ("kotik_photo.jpg", "gal.js", "assets/1.jpg", "t.txt", "media.json")
     if dead in html:
         fail.append(f"index.html still mentions deleted {dead}")
 
-# 9. media.js must be loaded, and before gallery.js
+# 9. contact links: the handle people SEE must match where the link GOES.
+#    (a visible @handle that differs from the URL is invisible until someone clicks it)
+for href, text in re.findall(r'<a class="contact-link" href="([^"]+)"[^>]*>(.*?)</a>', html, re.S):
+    shown = re.sub(r"<[^>]+>", "", text).strip()
+    if href.startswith("mailto:"):
+        if href[len("mailto:"):] != shown:
+            fail.append(f"contact: shows {shown!r} but mails {href[len('mailto:'):]!r}")
+    else:
+        m = re.match(r"https://(?:www\.)?(?:t\.me|instagram\.com)/([^/?#]+)/?$", href)
+        if not m:
+            fail.append(f"contact: unrecognised link {href!r} (cannot verify the handle)")
+        elif shown.lstrip("@") != m.group(1):
+            fail.append(f"contact: shows {shown!r} but links to {m.group(1)!r} ({href})")
+        else:
+            print(f"  contact ok  {shown} -> {href}")
+
+# 10. media.js must be loaded, and before gallery.js
 i_media, i_gal = html.find('src="media.js"'), html.find('src="assets/gallery.js"')
 if i_media == -1:
     fail.append("index.html never loads media.js")

@@ -571,6 +571,97 @@
             line-height: 1.6;
         }
 
+        .author-card {
+            background: var(--card-bg);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            margin-bottom: 2rem;
+        }
+
+        .author-body {
+            display: flex;
+            gap: 1.5rem;
+            align-items: flex-start;
+        }
+
+        .author-photo {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            object-fit: cover;
+            flex-shrink: 0;
+            border: 3px solid var(--border);
+        }
+
+        .author-name {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--text-main);
+        }
+
+        .author-bio {
+            color: #334155;
+            font-size: 0.95rem;
+            line-height: 1.7;
+            margin-top: 0.35rem;
+        }
+
+        .author-contacts {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 1.15rem;
+        }
+
+        .contact-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            background: #f1f5f9;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            text-decoration: none;
+            color: var(--text-main);
+            font-size: 0.875rem;
+            font-weight: 600;
+            transition: background 0.2s ease, transform 0.2s ease;
+            /* long e-mail must not push the card wider than the page */
+            max-width: 100%;
+            overflow-wrap: anywhere;
+        }
+
+        .contact-link:hover {
+            background: #e2e8f0;
+            transform: translateY(-1px);
+        }
+
+        .contact-link:focus-visible {
+            outline: 3px solid var(--primary);
+            outline-offset: 2px;
+        }
+
+        .contact-link i {
+            color: var(--primary);
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+
+        /* Stack and centre on narrow screens */
+        @media (max-width: 600px) {
+            .author-body {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+            }
+
+            .author-contacts {
+                justify-content: center;
+            }
+        }
+
         footer {
             text-align: center;
             color: var(--text-muted);
@@ -856,6 +947,38 @@
             </p>
         </div>
 
+        <div class="author-card">
+            <div class="section-title">
+                <i class="fa-solid fa-user"></i> <span id="author-title">Об авторе страницы</span>
+            </div>
+
+            <div class="author-body">
+                <img class="author-photo" id="author-photo" src="assets/author.webp"
+                     width="120" height="120" loading="lazy" decoding="async"
+                     alt="Михайло, автор страницы">
+
+                <div class="author-text">
+                    <div class="author-name" id="author-name">Михаил (Михайло)</div>
+                    <p class="author-bio" id="author-bio">
+                        Работаю в айти на низовой должности. Сам из Украины, живу в Грузии.
+                        Играю на гитаре, пою в хоре и очень люблю котиков.
+                    </p>
+
+                    <div class="author-contacts">
+                        <a class="contact-link" href="mailto:innosanctum@gmail.com">
+                            <i class="fa-solid fa-envelope"></i> innosanctum@gmail.com
+                        </a>
+                        <a class="contact-link" href="https://t.me/innosanctum" target="_blank" rel="noopener noreferrer">
+                            <i class="fa-brands fa-telegram"></i> @innosanctum
+                        </a>
+                        <a class="contact-link" href="https://www.instagram.com/msehiievskyi/" target="_blank" rel="noopener noreferrer">
+                            <i class="fa-brands fa-instagram"></i> @msehiievskyi
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <footer>
@@ -901,7 +1024,11 @@
                 doc2Title: "Назначения врача",
                 doc2Sub: "Рекомендации",
                 musicTitle: "Благотворительные выступления",
-                musicDesc: "В ближайшее время я планирую проводить небольшие акустические выступления (играю на гитаре и пою) на улицах и площадках Тбилиси в поддержку сбора средств для Котика. Следите за обновлениями и новыми фото/видео на этой странице!"
+                musicDesc: "В ближайшее время я планирую проводить небольшие акустические выступления (играю на гитаре и пою) на улицах и площадках Тбилиси в поддержку сбора средств для Котика. Следите за обновлениями и новыми фото/видео на этой странице!",
+                authorTitle: "Об авторе страницы",
+                authorName: "Михаил (Михайло)",
+                authorBio: "Работаю в айти на низовой должности. Сам из Украины, живу в Грузии. Играю на гитаре, пою в хоре и очень люблю котиков.",
+                authorPhotoAlt: "Михайло, автор страницы"
             },
             en: {
                 navLogo: "Kotik's Page",
@@ -938,7 +1065,11 @@
                 doc2Title: "Vet Prescriptions",
                 doc2Sub: "Medical plan",
                 musicTitle: "Charity Guitar Performances",
-                musicDesc: "I plan to perform street acoustic music sets (singing and playing guitar) around Tbilisi to help raise funds for Kotik. Stay tuned for new updates, photos, and video clips on this page!"
+                musicDesc: "I plan to perform street acoustic music sets (singing and playing guitar) around Tbilisi to help raise funds for Kotik. Stay tuned for new updates, photos, and video clips on this page!",
+                authorTitle: "About me",
+                authorName: "Mykhailo (Mikhail)",
+                authorBio: "I work an entry-level job in IT. I'm from Ukraine and I live in Georgia. I play guitar, sing in a choir, and I love cats.",
+                authorPhotoAlt: "Mykhailo, the author of this page"
             },
             ka: {
                 navLogo: "კოტიკის გვერდი",
@@ -975,7 +1106,11 @@
                 doc2Title: "ექიმის დანიშნულება",
                 doc2Sub: "რეკომენდაციები",
                 musicTitle: "საქველმოქმედო გამოსვლები",
-                musicDesc: "უახლოეს მომავალში ვგეგმავ მცირე აკუსტიკურ გამოსვლებს (გიტარაზე დაკვრა და სიმღერა) თბილისში კოტიკის მხარდასაჭერად. ადევნეთ თვალი სიახლეებს!"
+                musicDesc: "უახლოეს მომავალში ვგეგმავ მცირე აკუსტიკურ გამოსვლებს (გიტარაზე დაკვრა და სიმღერა) თბილისში კოტიკის მხარდასაჭერად. ადევნეთ თვალი სიახლეებს!",
+                authorTitle: "გვერდის ავტორის შესახებ",
+                authorName: "მიხაილო",
+                authorBio: "ვმუშაობ IT-ში დაბალ თანამდებობაზე. წარმოშობით უკრაინიდან ვარ, ვცხოვრობ საქართველოში. ვუკრავ გიტარაზე, ვმღერი გუნდში და ძალიან მიყვარს კატები.",
+                authorPhotoAlt: "მიხაილო, გვერდის ავტორი"
             }
         };
 
@@ -1003,7 +1138,10 @@
             'doc1-title': 'doc1Title', 'doc1-sub': 'doc1Sub',
             'doc2-title': 'doc2Title', 'doc2-sub': 'doc2Sub',
             'music-title': 'musicTitle',
-            'music-desc': 'musicDesc'
+            'music-desc': 'musicDesc',
+            'author-title': 'authorTitle',
+            'author-name': 'authorName',
+            'author-bio': 'authorBio'
         };
 
         function setLanguage(lang, btn) {
@@ -1037,6 +1175,12 @@
             for (const id in aria) {
                 const el = document.getElementById(id);
                 if (el && aria[id]) el.setAttribute('aria-label', aria[id]);
+            }
+
+            const alts = { 'author-photo': t.authorPhotoAlt };
+            for (const id in alts) {
+                const el = document.getElementById(id);
+                if (el && alts[id]) el.alt = alts[id];
             }
 
             try { localStorage.setItem('kotik-lang', lang); } catch (e) {}

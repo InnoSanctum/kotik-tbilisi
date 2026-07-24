@@ -21,8 +21,18 @@ media.js            что показывать в галерее  <- редак
 media/              фото 1600px WebP
 media/thumbs/       превью 400x400 WebP
 assets/gallery.js   загрузчик галереи
+assets/author.webp  фото автора в блоке «Об авторе» (600x600)
 assets/             иконки, стрелки, QR-код, документы
 tools/              вспомогательные скрипты (в сайт не входят)
+```
+
+Блок «Об авторе» (имя, описание, контакты) правится прямо в `index.html`:
+текст — в таблице `translations` по ключам `authorTitle`, `authorName`,
+`authorBio`; ссылки на почту, Telegram и Instagram — в разметке
+`.author-contacts`. Заменить фото:
+
+```bash
+python -c "from PIL import Image, ImageOps; im=ImageOps.exif_transpose(Image.open('new.jpg')).convert('RGB'); ImageOps.fit(im,(600,600),Image.LANCZOS,centering=(0.5,1.0)).save('assets/author.webp','WEBP',quality=82,method=6)"
 ```
 
 ## Как добавить фото

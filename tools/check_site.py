@@ -40,7 +40,9 @@ fail = []
 # 1. every local src=/href= in index.html resolves to a real file
 refs = re.findall(r'(?:src|href)="([^"]+)"', html)
 for r in refs:
-    if r.startswith(("http://", "https://", "#", "data:", "//")):
+    # skip fragments, protocol-relative URLs and anything with a URI scheme
+    # (http:, https:, data:, mailto:, tel: ...) -- only local paths are checked
+    if r.startswith(("#", "//")) or re.match(r"^[a-zA-Z][a-zA-Z0-9+.\-]*:", r):
         continue
     if not (ROOT / r).exists():
         fail.append(f"index.html references missing file: {r}")

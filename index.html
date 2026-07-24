@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Помощь Котику | Help Kotik | კოტიკის დახმარება</title>
     <meta name="description" content="Официальная страница сбора средств на лечение дворового кота Котика в Тбилиси.">
+    <!-- Favicon: cat silhouette. SVG for modern browsers, PNG fallbacks. -->
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+    <link rel="alternate icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
+    <meta name="theme-color" content="#4f46e5">
     <!-- FontAwesome icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Fonts -->
@@ -102,16 +107,34 @@
             padding: 0 1.5rem;
         }
 
+        /* Desktop: gallery + donate box stacked in the LEFT column,
+           the info card in the RIGHT column.
+           Medical + music sections sit outside this grid => full page width. */
         .hero-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2.5rem;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            grid-template-areas:
+                "gallery info"
+                "donate  info";
+            grid-template-rows: auto auto;
+            gap: 2rem 2.5rem;
             align-items: start;
+            margin-bottom: 2rem;
         }
 
+        .gallery-card { grid-area: gallery; }
+        .info-card    { grid-area: info;    }
+        .donate-box   { grid-area: donate;  }
+
+        /* Mobile: one column, natural reading order (photo -> story -> donate) */
         @media (max-width: 850px) {
             .hero-grid {
                 grid-template-columns: 1fr;
+                grid-template-areas:
+                    "gallery"
+                    "info"
+                    "donate";
+                gap: 2rem;
             }
         }
 
@@ -121,13 +144,11 @@
             padding: 1.25rem;
             border: 1px solid var(--border);
             box-shadow: var(--shadow);
-            position: sticky;
-            top: 90px;
         }
 
         .main-img-container {
             position: relative;
-            width: 480px;
+            width: 100%;
             height: auto;
             border-radius: var(--radius-md);
             overflow: hidden;
@@ -159,7 +180,7 @@
 
         .badge-status {
             position: absolute;
-            bottom: 15px;
+            top: 15px;
             right: 15px;
             background: var(--accent);
             color: #fff;
@@ -209,7 +230,6 @@
             padding: 2rem;
             border: 1px solid var(--border);
             box-shadow: var(--shadow);
-            margin-bottom: 2rem;
         }
 
         .title-group h1 {
@@ -259,7 +279,6 @@
             border-radius: var(--radius-lg);
             padding: 2rem;
             box-shadow: 0 15px 30px -5px rgba(79, 70, 229, 0.3);
-            margin-bottom: 2rem;
             text-align: center;
         }
 
@@ -352,6 +371,7 @@
         .medical-list {
             list-style: none;
             display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr));
             gap: 12px;
         }
 
@@ -493,7 +513,7 @@
 		
 		.img-wrapper {
     width: 100%;
-    height: 480px; /* Задайте нужную вам максимальную высоту (например, 360px или 400px) */
+    height: min(480px, 60vh); /* max height of the photo area, shrinks on small screens */
     overflow: hidden;
     display: flex;
     align-items: center; /* Центрируем более низкие картинки по вертикали */
@@ -544,149 +564,152 @@
                 <i class="fa-solid fa-cat"></i> <span id="nav-logo">Страница Котика</span>
             </a>
             <div class="lang-switcher">
-                <button class="lang-btn active" onclick="setLanguage('ru', this)">RU</button>
-                <button class="lang-btn" onclick="setLanguage('en', this)">EN</button>
-                <button class="lang-btn" onclick="setLanguage('ka', this)">GE</button>
+                <button class="lang-btn active" data-lang="ru" onclick="setLanguage('ru', this)">RU</button>
+                <button class="lang-btn" data-lang="en" onclick="setLanguage('en', this)">EN</button>
+                <button class="lang-btn" data-lang="ka" onclick="setLanguage('ka', this)">GE</button>
             </div>
         </div>
     </header>
 
     <div class="container">
+
         <div class="hero-grid">
-            
-            <div class="gallery-column">
-                <div class="gallery-card">
-                    <div class="main-img-container">
-                        
+
+            <div class="gallery-card">
+                <div class="main-img-container">
+
+                    <div class="badge-location">
+                        <i class="fa-solid fa-location-dot"></i> <span id="badge-location">Тбилиси</span>
+                    </div>
+                    <span class="badge-status" id="status-badge">Нужна помощь</span>
+                    
 						 <div class="img-wrapper">
-							<img src="assets\kotik_photo.jpg" id="img" alt="Gallery Image">
+							<img src="assets/kotik_photo.jpg" loading="eager" decoding="async" id="img" alt="Gallery Image">
 						</div>
-            
+        
 						<!-- Блок с кнопками управления -->
 						<div class="gallery-nav">
 							<img src="assets/left_arrow.png" class="nav-btn" onClick="left_arrow()" alt="Prev" /> 
 							<img src="assets/right_arrow.png" class="nav-btn" onClick="right_arrow()" alt="Next" />
 						</div>
 												
+                </div>
+                
+                <div class="thumbs">
+                    <div class="thumb-item" title="Новые фото">
+                        <i class="fa-solid fa-camera"></i>
                     </div>
-                    
-                    <div class="thumbs">
-                        <div class="thumb-item" title="Новые фото">
-                            <i class="fa-solid fa-camera"></i>
-                        </div>
-                        <div class="thumb-item" title="Новые видео">
-                            <i class="fa-solid fa-video"></i>
-                        </div>
+                    <div class="thumb-item" title="Новые видео">
+                        <i class="fa-solid fa-video"></i>
                     </div>
                 </div>
             </div>
 
-            <div class="info-column">
-                
-                <div class="info-card">
-                    <div class="title-group">
-                        <h1 id="cat-title">Котик</h1>
-                        <div class="subtitle" id="cat-subtitle">Дворовой кот из Тбилиси</div>
-                        <div class="tags">
-                            <span class="tag" id="tag-age">Молодой (~3 года)</span>
-                            <span class="tag" id="tag-nature">Спокойный & Независимый</span>
-                            <span class="tag warning" id="tag-fiv"><i class="fa-solid fa-notes-medical"></i> ВИК (FIV) +</span>
-                        </div>
+            <div class="info-card">
+                <div class="title-group">
+                    <h1 id="cat-title">Котик</h1>
+                    <div class="subtitle" id="cat-subtitle">Дворовой кот из Тбилиси</div>
+                    <div class="tags">
+                        <span class="tag" id="tag-age">Молодой (~3 года)</span>
+                        <span class="tag" id="tag-nature">Спокойный & Независимый</span>
+                        <span class="tag warning" id="tag-fiv"><i class="fa-solid fa-notes-medical"></i> ВИК (FIV) +</span>
                     </div>
+                </div>
 
-                    <div class="bio-text" id="cat-bio">
-                        Котик - молодой, сдержанный и очень независимый дворовой кот, живущий в обычном итальянском дворике в Тбилиси. Так сложилось, что я живу в том же итальянском дворике и кормлю местных кошек, и Котик начал приходить ко мне - не сразу, но, видимо, взяв пример со своих пушистых собратьев, он решил, что я не так уж страшен. Зимой он грелся на диване по ночам, весной перестал гостить, но каждый день приходил за едой и общением. Не так давно я заметил, что с ним что-то не так. Сильный неприятный запах изо рта, вялость - он мог несколько часов просидеть на одном месте, не двигаясь, затем отойти за едой на несколько минут - и опять вернуться на свой пост, на следующие несколько часов. Шерсть стала тусклая, походка неуверенная. Он чесался, не набирал вес, хотя ел с избытком, постоянно много пил. Мы с женой не могли на это спокойно смотреть, и отнесли его к ветеринару. Как выяснилось, не зря: во время осмотра был выявлен ВИК (вирус иммунодефицита кошек), а также его постоянный спутник - воспалительный процесс. ВИК не лечится, но воспаление можно снять. Кроме того, нужны дополнительные исследования, которые могут показать другие заболевания. И кота нужно как-то изолировать от других кошек - так что было бы неплохо найти для него дом: я снимаю квартиру, и котов держать мне нельзя. Да и квартира очень маленькая, а Котик привык к жизни во дворе и дома сидеть отказывается. 
+                <div class="bio-text" id="cat-bio">
+                    Котик - молодой, сдержанный и очень независимый дворовой кот, живущий в обычном итальянском дворике в Тбилиси. Так сложилось, что я живу в том же итальянском дворике и кормлю местных кошек, и Котик начал приходить ко мне - не сразу, но, видимо, взяв пример со своих пушистых собратьев, он решил, что я не так уж страшен. Зимой он грелся на диване по ночам, весной перестал гостить, но каждый день приходил за едой и общением. Не так давно я заметил, что с ним что-то не так. Сильный неприятный запах изо рта, вялость - он мог несколько часов просидеть на одном месте, не двигаясь, затем отойти за едой на несколько минут - и опять вернуться на свой пост, на следующие несколько часов. Шерсть стала тусклая, походка неуверенная. Он чесался, не набирал вес, хотя ел с избытком, постоянно много пил. Мы с женой не могли на это спокойно смотреть, и отнесли его к ветеринару. Как выяснилось, не зря: во время осмотра был выявлен ВИК (вирус иммунодефицита кошек), а также его постоянный спутник - воспалительный процесс. ВИК не лечится, но воспаление можно снять. Кроме того, нужны дополнительные исследования, которые могут показать другие заболевания. И кота нужно как-то изолировать от других кошек - так что было бы неплохо найти для него дом: я снимаю квартиру, и котов держать мне нельзя. Да и квартира очень маленькая, а Котик привык к жизни во дворе и дома сидеть отказывается. 
 						Мы оплатили первичный осмотр, анализы, обработку от паразитов и базовые лекарства. Однако Котику все еще требуется чистка зубов под седацией, УЗИ брюшной полости и дальнейший уход. На это у меня, к сожалению, нет средств, и я прошу помощи у неравнодушных людей.
+                </div>
+            </div>
+
+            <div class="donate-box">
+                <h2 id="donate-title">Поддержать лечение Котика</h2>
+                <p id="donate-desc">Любая сумма поможет оплатить предстоящую чистку зубов, УЗИ и необходимые медикаменты.</p>
+                
+                <a href="https://egreve.bog.ge/For_Kotik" target="_blank" class="donate-btn" id="donate-btn">
+                    <i class="fa-solid fa-heart"></i> <span id="donate-btn-text">Перевести в Bank of Georgia</span>
+                </a>
+
+                <div class="qr-wrapper">
+                    <div class="qr-code">
+                        <img src="assets/qr_code.png" alt="QR Code Bank of Georgia">
                     </div>
+                    <div class="qr-caption" id="qr-caption">Сканируйте QR для быстрого перевода</div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Full page width from here on -->
+        <div class="medical-section">
+            <div class="section-title">
+                <i class="fa-solid fa-stethoscope"></i> <span id="med-title">Медицинский статус и план</span>
+            </div>
+
+            <div class="medical-list">
+                <div class="medical-item done">
+                    <div class="item-info">
+                        <span class="item-title" id="m1-title">Анализы крови & Осмотр</span>
+                        <span class="item-desc" id="m1-desc">Оплачено. Выявлен ВИК, воспаление (WBC 23.2).</span>
+                    </div>
+                    <span class="item-badge" id="m1-badge">Сделано</span>
                 </div>
 
-                <div class="donate-box">
-                    <h2 id="donate-title">Поддержать лечение Котика</h2>
-                    <p id="donate-desc">Любая сумма поможет оплатить предстоящую чистку зубов, УЗИ и необходимые медикаменты.</p>
-                    
-                    <a href="https://egreve.bog.ge/For_Kotik" target="_blank" class="donate-btn" id="donate-btn">
-                        <i class="fa-solid fa-heart"></i> <span id="donate-btn-text">Перевести в Bank of Georgia</span>
-                    </a>
-
-                    <div class="qr-wrapper">
-                        <div class="qr-code">
-                            <img src="assets/qr_code.png" alt="QR Code Bank of Georgia">
-                        </div>
-                        <div class="qr-caption" id="qr-caption">Сканируйте QR для быстрого перевода</div>
+                <div class="medical-item done">
+                    <div class="item-info">
+                        <span class="item-title" id="m2-title">Обработка от паразитов & Препараты</span>
+                        <span class="item-desc" id="m2-desc">Нексгард комбо, курс Доксициклина и Триттико.</span>
                     </div>
+                    <span class="item-badge" id="m2-badge">Сделано</span>
                 </div>
 
-                <div class="medical-section">
-                    <div class="section-title">
-                        <i class="fa-solid fa-stethoscope"></i> <span id="med-title">Медицинский статус и план</span>
+                <div class="medical-item needed">
+                    <div class="item-info">
+                        <span class="item-title" id="m3-title">Санация ротовой полости</span>
+                        <span class="item-desc" id="m3-desc">Чистка зубов и обработка десен под седацией в ветеринарной клинике.</span>
                     </div>
-
-                    <div class="medical-list">
-                        <div class="medical-item done">
-                            <div class="item-info">
-                                <span class="item-title" id="m1-title">Анализы крови & Осмотр</span>
-                                <span class="item-desc" id="m1-desc">Оплачено. Выявлен ВИК, воспаление (WBC 23.2).</span>
-                            </div>
-                            <span class="item-badge" id="m1-badge">Сделано</span>
-                        </div>
-
-                        <div class="medical-item done">
-                            <div class="item-info">
-                                <span class="item-title" id="m2-title">Обработка от паразитов & Препараты</span>
-                                <span class="item-desc" id="m2-desc">Нексгард комбо, курс Доксициклина и Триттико.</span>
-                            </div>
-                            <span class="item-badge" id="m2-badge">Сделано</span>
-                        </div>
-
-                        <div class="medical-item needed">
-                            <div class="item-info">
-                                <span class="item-title" id="m3-title">Санация ротовой полости</span>
-                                <span class="item-desc" id="m3-desc">Чистка зубов и обработка десен под седацией в ветеринарной клинике.</span>
-                            </div>
-                            <span class="item-badge" id="m3-badge">Требуется</span>
-                        </div>
-
-                        <div class="medical-item needed">
-                            <div class="item-info">
-                                <span class="item-title" id="m4-title">УЗИ брюшной полости</span>
-                                <span class="item-desc" id="m4-desc">Рекомендовано в клинике «Киви» (д-р Болюх / Михайлова).</span>
-                            </div>
-                            <span class="item-badge" id="m4-badge">Требуется</span>
-                        </div>
-                    </div>
-
-                    <div class="section-title" style="margin-top: 1.5rem;">
-                        <i class="fa-solid fa-file-medical"></i> <span id="docs-title">Документы и анализы</span>
-                    </div>
-
-                    <div class="docs-grid">
-                        <a href="assets/blood_test.png" target="_blank" class="doc-link">
-                            <i class="fa-solid fa-file-pdf doc-icon"></i>
-                            <div class="doc-text">
-                                <span class="doc-title" id="doc1-title">Анализ крови (27.06)</span>
-                                <span class="doc-sub" id="doc1-sub">Клиника ZooFamily</span>
-                            </div>
-                        </a>
-
-                        <a href="assets/vet_recommendation.png" target="_blank" class="doc-link">
-                            <i class="fa-solid fa-file-pdf doc-icon"></i>
-                            <div class="doc-text">
-                                <span class="doc-title" id="doc2-title">Назначения врача</span>
-                                <span class="doc-sub" id="doc2-sub">Рекомендации</span>
-                            </div>
-                        </a>
-                    </div>
+                    <span class="item-badge" id="m3-badge">Требуется</span>
                 </div>
 
-                <div class="music-card">
-                    <h3><i class="fa-solid fa-guitar"></i> <span id="music-title">Благотворительные выступления</span></h3>
-                    <p id="music-desc">
-                        В ближайшее время я планирую проводить небольшие акустические выступления (играю на гитаре и пою) на улицах и площадках Тбилиси в поддержку сбора средств для Котика. Следите за обновлениями и новыми фото/видео на этой странице!
-                    </p>
+                <div class="medical-item needed">
+                    <div class="item-info">
+                        <span class="item-title" id="m4-title">УЗИ брюшной полости</span>
+                        <span class="item-desc" id="m4-desc">Рекомендовано в клинике «Киви» (д-р Болюх / Михайлова).</span>
+                    </div>
+                    <span class="item-badge" id="m4-badge">Требуется</span>
                 </div>
+            </div>
 
+            <div class="section-title" style="margin-top: 1.5rem;">
+                <i class="fa-solid fa-file-medical"></i> <span id="docs-title">Документы и анализы</span>
+            </div>
+
+            <div class="docs-grid">
+                <a href="assets/blood_test.png" target="_blank" class="doc-link">
+                    <i class="fa-solid fa-file-pdf doc-icon"></i>
+                    <div class="doc-text">
+                        <span class="doc-title" id="doc1-title">Анализ крови (27.06)</span>
+                        <span class="doc-sub" id="doc1-sub">Клиника ZooFamily</span>
+                    </div>
+                </a>
+
+                <a href="assets/vet_recommendation.png" target="_blank" class="doc-link">
+                    <i class="fa-solid fa-file-pdf doc-icon"></i>
+                    <div class="doc-text">
+                        <span class="doc-title" id="doc2-title">Назначения врача</span>
+                        <span class="doc-sub" id="doc2-sub">Рекомендации</span>
+                    </div>
+                </a>
             </div>
         </div>
+
+        <div class="music-card">
+            <h3><i class="fa-solid fa-guitar"></i> <span id="music-title">Благотворительные выступления</span></h3>
+            <p id="music-desc">
+                В ближайшее время я планирую проводить небольшие акустические выступления (играю на гитаре и пою) на улицах и площадках Тбилиси в поддержку сбора средств для Котика. Следите за обновлениями и новыми фото/видео на этой странице!
+            </p>
+        </div>
+
     </div>
 
     <footer>
@@ -704,6 +727,7 @@
                 tagFiv: "ВИК (FIV) +",
                 catBio: "Котик - молодой, сдержанный и очень независимый дворовой кот, живущий в обычном итальянском дворике в Тбилиси. Так сложилось, что я живу в том же итальянском дворике и кормлю местных кошек, и Котик начал приходить ко мне - не сразу, но, видимо, взяв пример со своих пушистых собратьев, он решил, что я не так уж страшен. Зимой он грелся на диване по ночам, весной перестал гостить, но каждый день приходил за едой и общением. Не так давно я заметил, что с ним что-то не так. Сильный неприятный запах изо рта, вялость - он мог несколько часов просидеть на одном месте, не двигаясь, затем отойти за едой на несколько минут - и опять вернуться на свой пост, на следующие несколько часов. Шерсть стала тусклая, походка неуверенная. Он чесался, не набирал вес, хотя ел с избытком, постоянно много пил. Мы с женой не могли на это спокойно смотреть, и отнесли его к ветеринару. Как выяснилось, не зря: во время осмотра был выявлен ВИК (вирус иммунодефицита кошек), а также его постоянный спутник - воспалительный процесс. ВИК не лечится, но воспаление можно снять. Кроме того, нужны дополнительные исследования, которые могут показать другие заболевания. И кота нужно как-то изолировать от других кошек - так что было бы неплохо найти для него дом: я снимаю квартиру, и котов держать мне нельзя. Да и квартира очень маленькая, а Котик привык к жизни во дворе и дома сидеть отказывается. Мы оплатили первичный осмотр, анализы, обработку от паразитов и базовые лекарства. Однако Котику все еще требуется чистка зубов под седацией, УЗИ брюшной полости и дальнейший уход. На это у меня, к сожалению, нет средств, и я прошу помощи у неравнодушных людей.",
                 statusBadge: "Нужна помощь",
+                badgeLocation: "Тбилиси",
                 donateTitle: "Поддержать лечение Котика",
                 donateDesc: "Любая сумма поможет оплатить предстоящую чистку зубов под седацией, УЗИ и необходимые медикаменты.",
                 donateBtnText: "Перевести в Bank of Georgia",
@@ -738,6 +762,7 @@
                 tagFiv: "FIV positive +",
                 catBio: "Kotik is a young, reserved, and very independent street cat living in a typical Italian courtyard in Tbilisi. It so happened that I live in the same Italian courtyard and feed the local cats, so Kotik started coming to me—not right away, but apparently taking a cue from his furry brethren, he decided I wasn't so scary after all. In the winter, he warmed himself on the couch at night; in the spring, he stopped visiting, but came every day for food and companionship. Not long ago, I noticed something was wrong with him. He had a strong, unpleasant odor from his breath and was lethargic—he would sit in one place for several hours without moving, then go off for food for a few minutes—and then return to his post for the next several hours. His fur became dull, and his gait was unsteady. He scratched himself and wasn't gaining weight, despite eating abundantly and constantly drinking a lot. My wife and I couldn't stand it and took him to the vet. As it turns out, it was worth it: during the examination, FIV (feline immunodeficiency virus) was detected, along with its constant companion – an inflammatory process. FIV is incurable, but the inflammation can be reduced. Furthermore, additional tests are needed, which could reveal other diseases. The cat also needs to be isolated from other cats, so it would be a good idea to find a home for him: I rent an apartment and can't keep cats. The apartment is also very small, and Kitty is accustomed to life outside and refuses to stay indoors. We paid for the initial examination, tests, parasite treatment, and basic medications. However, Kitty still needs a teeth cleaning under sedation, an abdominal ultrasound, and ongoing care. Unfortunately, I don't have the funds for this, and I'm asking for help from caring people.",
                 statusBadge: "Help Needed",
+                badgeLocation: "Tbilisi",
                 donateTitle: "Support Kotik's Treatment",
                 donateDesc: "Any amount will help cover upcoming dental cleaning under sedation, ultrasound, and care.",
                 donateBtnText: "Donate via Bank of Georgia",
@@ -772,6 +797,7 @@
                 tagFiv: "FIV (ვიკ) დადებითი +",
                 catBio: "კოტიკი ახალგაზრდა, თავშეკავებული და ძალიან დამოუკიდებელი ქუჩის კატაა, რომელიც თბილისურ ტიპურ იტალიურ ეზოში ცხოვრობს. შემთხვევით მეც იმავე იტალიურ ეზოში ვცხოვრობ და ადგილობრივ კატებს ვკვებავ, ამიტომ კოტიკმა ჩემთან მოსვლა დაიწყო - არა მაშინვე, მაგრამ, როგორც ჩანს, თავისი ბეწვიანი ძმებისგან მაგალითს იღებდა და გადაწყვიტა, რომ ბოლოს და ბოლოს, არც ისე საშინელი ვიყავი. ზამთარში ღამით დივანზე თბებოდა; გაზაფხულზე კი აღარ სტუმრობდა, მაგრამ ყოველდღე მოდიოდა საჭმლისა და ურთიერთობისთვის. არც ისე დიდი ხნის წინ შევნიშნე, რომ რაღაც სჭირდა. სუნთქვაში ძლიერი, უსიამოვნო სუნი ჰქონდა და ლეთარგიული იყო - რამდენიმე საათის განმავლობაში ერთ ადგილას იჯდა უმოძრაოდ, შემდეგ რამდენიმე წუთით საჭმელად მიდიოდა და შემდეგ რამდენიმე საათის განმავლობაში თავის ადგილს უბრუნდებოდა. ბეწვი გაუფერულდა და სიარული არამყარი ჰქონდა. თავს იფხანდა და წონაში არ იმატებდა, მიუხედავად იმისა, რომ უხვად ჭამდა და მუდმივად ბევრს სვამდა. მე და ჩემმა მეუღლემ ვერ გავუძელით და ვეტერინართან წავიყვანეთ. როგორც აღმოჩნდა, ღირდა: გამოკვლევის დროს აღმოჩნდა კატის იმუნოდეფიციტის ვირუსი (FIV) და მისი მუდმივი თანმხლები - ანთებითი პროცესი. FIV განუკურნებელია, მაგრამ ანთების შემცირება შესაძლებელია. გარდა ამისა, საჭიროა დამატებითი ანალიზები, რომლებმაც შეიძლება სხვა დაავადებები გამოავლინოს. კატა ასევე საჭიროებს იზოლირებას სხვა კატებისგან, ამიტომ კარგი იქნებოდა მისთვის სახლის პოვნა: ბინას ვქირაობ და კატებს ვერ ვყავარ. ბინაც ძალიან პატარაა და კიტი მიჩვეულია გარეთ ცხოვრებას და უარს ამბობს სახლში დარჩენაზე. ჩვენ დავფარეთ საწყისი გამოკვლევის, ანალიზების, პარაზიტების მკურნალობისა და ძირითადი მედიკამენტების ხარჯები. თუმცა, კიტის ჯერ კიდევ სჭირდება კბილების გაწმენდა სედაციის ქვეშ, მუცლის ღრუს ულტრაბგერითი გამოკვლევა და მუდმივი მოვლა. სამწუხაროდ, ამისთვის სახსრები არ მაქვს და დახმარებას მზრუნველი ადამიანებისგან ვითხოვ.",
                 statusBadge: "საჭიროებს დახმარებას",
+                badgeLocation: "თბილისი",
                 donateTitle: "დაეხმარეთ კოტიკის მკურნალობას",
                 donateDesc: "ნებისმიერი თანხა დაგვეხმარება სტომატოლოგიური პროცედურისა და ექოსკოპიის დაფინანსებაში.",
                 donateBtnText: "გადარიცხვა Bank of Georgia-ში",
@@ -799,58 +825,65 @@
             }
         };
 
+        /* id in the DOM  ->  key in the translations table */
+        const TEXT_FIELDS = {
+            'nav-logo': 'navLogo',
+            'cat-title': 'catTitle',
+            'cat-subtitle': 'catSubtitle',
+            'tag-age': 'tagAge',
+            'tag-nature': 'tagNature',
+            'tag-fiv': 'tagFiv',
+            'cat-bio': 'catBio',
+            'status-badge': 'statusBadge',
+            'badge-location': 'badgeLocation',
+            'donate-title': 'donateTitle',
+            'donate-desc': 'donateDesc',
+            'donate-btn-text': 'donateBtnText',
+            'qr-caption': 'qrCaption',
+            'med-title': 'medTitle',
+            'm1-title': 'm1Title', 'm1-desc': 'm1Desc', 'm1-badge': 'm1Badge',
+            'm2-title': 'm2Title', 'm2-desc': 'm2Desc', 'm2-badge': 'm2Badge',
+            'm3-title': 'm3Title', 'm3-desc': 'm3Desc', 'm3-badge': 'm3Badge',
+            'm4-title': 'm4Title', 'm4-desc': 'm4Desc', 'm4-badge': 'm4Badge',
+            'docs-title': 'docsTitle',
+            'doc1-title': 'doc1Title', 'doc1-sub': 'doc1Sub',
+            'doc2-title': 'doc2Title', 'doc2-sub': 'doc2Sub',
+            'music-title': 'musicTitle',
+            'music-desc': 'musicDesc'
+        };
+
         function setLanguage(lang, btn) {
-            document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
-            if(btn) btn.classList.add('active');
-
             const t = translations[lang];
-            
-            document.getElementById('nav-logo').innerText = t.navLogo;
-            document.getElementById('cat-title').innerText = t.catTitle;
-            document.getElementById('cat-subtitle').innerText = t.catSubtitle;
-            document.getElementById('tag-age').innerText = t.tagAge;
-            document.getElementById('tag-nature').innerText = t.tagNature;
-            document.getElementById('tag-fiv').innerText = t.tagFiv;
-            document.getElementById('cat-bio').innerText = t.catBio;
-            document.getElementById('status-badge').innerText = t.statusBadge;
-            
-            document.getElementById('donate-title').innerText = t.donateTitle;
-            document.getElementById('donate-desc').innerText = t.donateDesc;
-            document.getElementById('donate-btn-text').innerText = t.donateBtnText;
-            document.getElementById('qr-caption').innerText = t.qrCaption;
-            
-            document.getElementById('med-title').innerText = t.medTitle;
-            document.getElementById('m1-title').innerText = t.m1Title;
-            document.getElementById('m1-desc').innerText = t.m1Desc;
-            document.getElementById('m1-badge').innerText = t.m1Badge;
+            if (!t) return;
 
-            document.getElementById('m2-title').innerText = t.m2Title;
-            document.getElementById('m2-desc').innerText = t.m2Desc;
-            document.getElementById('m2-badge').innerText = t.m2Badge;
+            document.querySelectorAll('.lang-btn').forEach(b => {
+                b.classList.toggle('active', b === btn || b.dataset.lang === lang);
+            });
 
-            document.getElementById('m3-title').innerText = t.m3Title;
-            document.getElementById('m3-desc').innerText = t.m3Desc;
-            document.getElementById('m3-badge').innerText = t.m3Badge;
+            /* One missing element used to abort the whole function halfway
+               through, leaving the bottom of the page untranslated.
+               Now a missing id is simply skipped. */
+            for (const id in TEXT_FIELDS) {
+                const el = document.getElementById(id);
+                if (el && t[TEXT_FIELDS[id]] !== undefined) {
+                    el.innerText = t[TEXT_FIELDS[id]];
+                }
+            }
 
-            document.getElementById('m4-title').innerText = t.m4Title;
-            document.getElementById('m4-desc').innerText = t.m4Desc;
-            document.getElementById('m4-badge').innerText = t.m4Badge;
-
-            document.getElementById('docs-title').innerText = t.docsTitle;
-            document.getElementById('doc1-title').innerText = t.doc1Title;
-            document.getElementById('doc1-sub').innerText = t.doc1Sub;
-            document.getElementById('doc2-title').innerText = t.doc2Title;
-            document.getElementById('doc2-sub').innerText = t.doc2Sub;
-
-            document.getElementById('music-title').innerText = t.musicTitle;
-            document.getElementById('music-desc').innerText = t.musicDesc;
+            document.documentElement.lang = lang;
+            try { localStorage.setItem('kotik-lang', lang); } catch (e) {}
         }
 
-        function switchPhoto(src, element) {
-            document.getElementById('main-image').src = src;
-            document.querySelectorAll('.thumb-item').forEach(item => item.classList.remove('active'));
-            element.classList.add('active');
-        }
+        /* Restore the visitor's last choice, otherwise follow the browser. */
+        (function initLanguage() {
+            let lang = null;
+            try { lang = localStorage.getItem('kotik-lang'); } catch (e) {}
+            if (!lang) {
+                const nav = (navigator.language || 'ru').slice(0, 2).toLowerCase();
+                lang = translations[nav] ? nav : (nav === 'ge' ? 'ka' : 'ru');
+            }
+            setLanguage(lang, document.querySelector('.lang-btn[data-lang="' + lang + '"]'));
+        })();
     </script>
 </body>
 </html>

@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Помощь Котику | Help Kotik | კოტიკის დახმარება</title>
+    <meta name="description" content="Официальная страница сбора средств на лечение дворового кота Котика в Тбилиси.">
+    <!-- FontAwesome icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Noto+Sans+Georgian:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --accent: #f59e0b;
+            --bg-main: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --success: #10b981;
+            --radius-lg: 20px;
+            --radius-md: 12px;
+            --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', 'Noto Sans Georgian', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            line-height: 1.6;
+            padding-bottom: 60px;
+        }
+
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 1.5rem;
+        }
+
+        .nav-container {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-weight: 800;
+            font-size: 1.25rem;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+        }
+
+        .lang-switcher {
+            display: flex;
+            background: #f1f5f9;
+            padding: 4px;
+            border-radius: 30px;
+            gap: 2px;
+        }
+
+        .lang-btn {
+            border: none;
+            background: transparent;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .lang-btn.active {
+            background: #ffffff;
+            color: var(--primary);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 2rem auto;
+            padding: 0 1.5rem;
+        }
+
+        .hero-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2.5rem;
+            align-items: start;
+        }
+
+        @media (max-width: 850px) {
+            .hero-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .gallery-card {
+            background: var(--card-bg);
+            border-radius: var(--radius-lg);
+            padding: 1.25rem;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            position: sticky;
+            top: 90px;
+        }
+
+        .main-img-container {
+            position: relative;
+            width: 100%;
+            height: 380px;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            background: #e2e8f0;
+        }
+
+        .main-img-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .badge-location {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(8px);
+            color: #fff;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .badge-status {
+            position: absolute;
+            bottom: 15px;
+            right: 15px;
+            background: var(--accent);
+            color: #fff;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+
+        .thumbs {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .thumb-item {
+            height: 70px;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            border: 2px solid transparent;
+            opacity: 0.7;
+            transition: all 0.2s;
+            background: #cbd5e1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            font-size: 1.2rem;
+        }
+
+        .thumb-item.active, .thumb-item:hover {
+            border-color: var(--primary);
+            opacity: 1;
+        }
+
+        .thumb-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .info-card {
+            background: var(--card-bg);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            margin-bottom: 2rem;
+        }
+
+        .title-group h1 {
+            font-size: 2.25rem;
+            font-weight: 800;
+            color: var(--text-main);
+            margin-bottom: 0.25rem;
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 1rem;
+        }
+
+        .tag {
+            background: #f1f5f9;
+            color: #475569;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .tag.warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .bio-text {
+            color: #334155;
+            font-size: 1rem;
+            line-height: 1.7;
+            margin-top: 1rem;
+        }
+
+        .donate-box {
+            background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
+            color: #ffffff;
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            box-shadow: 0 15px 30px -5px rgba(79, 70, 229, 0.3);
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        .donate-box h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+        }
+
+        .donate-box p {
+            color: #e0e7ff;
+            font-size: 0.95rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .donate-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            background: #ffffff;
+            color: var(--primary);
+            font-weight: 800;
+            font-size: 1.1rem;
+            padding: 16px 32px;
+            border-radius: 30px;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 380px;
+        }
+
+        .donate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+            background: #f8fafc;
+        }
+
+        .qr-wrapper {
+            margin-top: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .qr-code {
+            width: 150px;
+            height: 150px;
+            background: #ffffff;
+            padding: 8px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        .qr-code img {
+            width: 100%;
+            height: 100%;
+        }
+
+        .qr-caption {
+            font-size: 0.8rem;
+            color: #c7d2fe;
+        }
+
+        .medical-section {
+            background: var(--card-bg);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            margin-bottom: 2rem;
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-main);
+        }
+
+        .section-title i {
+            color: var(--primary);
+        }
+
+        .medical-list {
+            list-style: none;
+            display: grid;
+            gap: 12px;
+        }
+
+        .medical-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: #f8fafc;
+            border-radius: var(--radius-md);
+            border-left: 4px solid var(--border);
+        }
+
+        .medical-item.done {
+            border-left-color: var(--success);
+            background: #f0fdf4;
+        }
+
+        .medical-item.needed {
+            border-left-color: var(--accent);
+            background: #fffbeb;
+        }
+
+        .item-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .item-title {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--text-main);
+        }
+
+        .item-desc {
+            font-size: 0.825rem;
+            color: var(--text-muted);
+        }
+
+        .item-badge {
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 12px;
+            text-transform: uppercase;
+        }
+
+        .done .item-badge {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .needed .item-badge {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .docs-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 1rem;
+        }
+
+        @media (max-width: 600px) {
+            .docs-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .doc-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: #f1f5f9;
+            border-radius: var(--radius-md);
+            text-decoration: none;
+            color: var(--text-main);
+            transition: background 0.2s;
+            border: 1px solid var(--border);
+        }
+
+        .doc-link:hover {
+            background: #e2e8f0;
+        }
+
+        .doc-icon {
+            font-size: 1.5rem;
+            color: #ef4444;
+        }
+
+        .doc-text {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .doc-title {
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .doc-sub {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .music-card {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #ffffff;
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            box-shadow: var(--shadow);
+            margin-bottom: 2rem;
+        }
+
+        .music-card h3 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--accent);
+        }
+
+        .music-card p {
+            color: #94a3b8;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        footer {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-top: 3rem;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="nav-container">
+            <a href="#" class="logo">
+                <i class="fa-solid fa-cat"></i> <span id="nav-logo">Страница Котика</span>
+            </a>
+            <div class="lang-switcher">
+                <button class="lang-btn active" onclick="setLanguage('ru', this)">RU</button>
+                <button class="lang-btn" onclick="setLanguage('en', this)">EN</button>
+                <button class="lang-btn" onclick="setLanguage('ka', this)">GE</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="hero-grid">
+            
+            <div class="gallery-column">
+                <div class="gallery-card">
+                    <div class="main-img-container">
+                        <img id="main-image" src="assets/kotik_photo.jpg" alt="Котик / Kotik">
+                        <div class="badge-location">
+                            <i class="fa-solid fa-location-dot"></i> Tbilisi, Georgia
+                        </div>
+                        <div class="badge-status" id="status-badge">
+                            Нужна помощь
+                        </div>
+                    </div>
+                    
+                    <div class="thumbs">
+                        <div class="thumb-item active" onclick="switchPhoto('assets/kotik_photo.jpg', this)">
+                            <img src="assets/kotik_photo.jpg" alt="Kotik Photo 1">
+                        </div>
+                        <div class="thumb-item" onclick="switchPhoto('assets/qr_code.png', this)">
+                            <img src="assets/qr_code.png" alt="Bank QR">
+                        </div>
+                        <div class="thumb-item" title="Новые фото">
+                            <i class="fa-solid fa-camera"></i>
+                        </div>
+                        <div class="thumb-item" title="Новые видео">
+                            <i class="fa-solid fa-video"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-column">
+                
+                <div class="info-card">
+                    <div class="title-group">
+                        <h1 id="cat-title">Котик</h1>
+                        <div class="subtitle" id="cat-subtitle">Дворовой кот из Тбилиси</div>
+                        <div class="tags">
+                            <span class="tag" id="tag-age">Молодой (~3 года)</span>
+                            <span class="tag" id="tag-nature">Спокойный & Независимый</span>
+                            <span class="tag warning" id="tag-fiv"><i class="fa-solid fa-notes-medical"></i> ВИК (FIV) +</span>
+                        </div>
+                    </div>
+
+                    <div class="bio-text" id="cat-bio">
+                        Котик — молодой, сдержанный и очень независимый дворовой кот, живущий на улицах Тбилиси. Недавно во время осмотра у него выявили ВИК (вирус иммунодефицита кошек), а также воспалительный процесс. Я самостоятельно оплатил первичный осмотр, анализы крови, обработку от паразитов и базовые лекарства. Однако Котику все еще требуется чистка зубов под седацией, УЗИ брюшной полости и дальнейший уход. На это у меня, к сожалению, нет средств, и я прошу помощи у неравнодушных людей.
+                    </div>
+                </div>
+
+                <div class="donate-box">
+                    <h2 id="donate-title">Поддержать лечение Котика</h2>
+                    <p id="donate-desc">Любая сумма поможет оплатить предстоящую чистку зубов под седацией, УЗИ и необходимые медикаменты.</p>
+                    
+                    <a href="https://egreve.bog.ge/For_Kotik" target="_blank" class="donate-btn" id="donate-btn">
+                        <i class="fa-solid fa-heart"></i> <span id="donate-btn-text">Перевести в Bank of Georgia</span>
+                    </a>
+
+                    <div class="qr-wrapper">
+                        <div class="qr-code">
+                            <img src="assets/qr_code.png" alt="QR Code Bank of Georgia">
+                        </div>
+                        <div class="qr-caption" id="qr-caption">Сканируйте QR для быстрого перевода</div>
+                    </div>
+                </div>
+
+                <div class="medical-section">
+                    <div class="section-title">
+                        <i class="fa-solid fa-stethoscope"></i> <span id="med-title">Медицинский статус и план</span>
+                    </div>
+
+                    <div class="medical-list">
+                        <div class="medical-item done">
+                            <div class="item-info">
+                                <span class="item-title" id="m1-title">Анализы крови & Осмотр</span>
+                                <span class="item-desc" id="m1-desc">Оплачено владельцем. Выявлен ВИК, воспаление (WBC 23.2).</span>
+                            </div>
+                            <span class="item-badge" id="m1-badge">Сделано</span>
+                        </div>
+
+                        <div class="medical-item done">
+                            <div class="item-info">
+                                <span class="item-title" id="m2-title">Обработка от паразитов & Препараты</span>
+                                <span class="item-desc" id="m2-desc">Нексгард комбо, курс Доксициклина и Триттико.</span>
+                            </div>
+                            <span class="item-badge" id="m2-badge">Сделано</span>
+                        </div>
+
+                        <div class="medical-item needed">
+                            <div class="item-info">
+                                <span class="item-title" id="m3-title">Санация ротовой полости</span>
+                                <span class="item-desc" id="m3-desc">Чистка зубов и обработка десен под седацией в ветеринарной клинике.</span>
+                            </div>
+                            <span class="item-badge" id="m3-badge">Требуется</span>
+                        </div>
+
+                        <div class="medical-item needed">
+                            <div class="item-info">
+                                <span class="item-title" id="m4-title">УЗИ брюшной полости</span>
+                                <span class="item-desc" id="m4-desc">Рекомендовано в клинике «Киви» (д-р Болюх / Михайлова).</span>
+                            </div>
+                            <span class="item-badge" id="m4-badge">Требуется</span>
+                        </div>
+                    </div>
+
+                    <div class="section-title" style="margin-top: 1.5rem;">
+                        <i class="fa-solid fa-file-medical"></i> <span id="docs-title">Документы и анализы</span>
+                    </div>
+
+                    <div class="docs-grid">
+                        <a href="assets/blood_test.pdf" target="_blank" class="doc-link">
+                            <i class="fa-solid fa-file-pdf doc-icon"></i>
+                            <div class="doc-text">
+                                <span class="doc-title" id="doc1-title">Анализ крови (27.06)</span>
+                                <span class="doc-sub" id="doc1-sub">PDF • Клиника ZooFamily</span>
+                            </div>
+                        </a>
+
+                        <a href="assets/vet_recommendation.pdf" target="_blank" class="doc-link">
+                            <i class="fa-solid fa-file-pdf doc-icon"></i>
+                            <div class="doc-text">
+                                <span class="doc-title" id="doc2-title">Назначения врача</span>
+                                <span class="doc-sub" id="doc2-sub">PDF • Рекомендации</span>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="music-card">
+                    <h3><i class="fa-solid fa-guitar"></i> <span id="music-title">Благотворительные выступления</span></h3>
+                    <p id="music-desc">
+                        В ближайшее время я планирую проводить небольшие акустические выступления (играю на гитаре и пою) на улицах и площадках Тбилиси в поддержку сбора средств для Котика. Следите за обновлениями и новыми фото/видео на этой странице!
+                    </p>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>© 2026 Сбор средств для кота Котика (Тбилиси). Все документы подтверждены ветеринарной клиникой ZooFamily.</p>
+    </footer>
+
+    <script>
+        const translations = {
+            ru: {
+                navLogo: "Страница Котика",
+                catTitle: "Котик",
+                catSubtitle: "Дворовой кот из Тбилиси",
+                tagAge: "Молодой (~3 года)",
+                tagNature: "Спокойный & Независимый",
+                tagFiv: "ВИК (FIV) +",
+                catBio: "Котик — молодой, сдержанный и очень независимый дворовой кот, живущий в Тбилиси. Недавно во время осмотра у него выявили ВИК (вирус иммунодефицита кошек), а также воспалительный процесс. Я самостоятельно оплатил первичный осмотр, анализы крови, обработку от паразитов и базовые лекарства. Однако Котику все еще требуется чистка зубов под седацией, УЗИ брюшной полости и дальнейший уход. На это у меня, к сожалению, нет средств, и я прошу помощи у неравнодушных людей.",
+                statusBadge: "Нужна помощь",
+                donateTitle: "Поддержать лечение Котика",
+                donateDesc: "Любая сумма поможет оплатить предстоящую чистку зубов под седацией, УЗИ и необходимые медикаменты.",
+                donateBtnText: "Перевести в Bank of Georgia",
+                qrCaption: "Сканируйте QR для быстрого перевода",
+                medTitle: "Медицинский статус и план",
+                m1Title: "Анализы крови & Осмотр",
+                m1Desc: "Оплачено владельцем. Выявлен ВИК, воспаление (WBC 23.2).",
+                m1Badge: "Сделано",
+                m2Title: "Обработка от паразитов & Препараты",
+                m2Desc: "Нексгард комбо, курс Доксициклина и Триттико.",
+                m2Badge: "Сделано",
+                m3Title: "Санация ротовой полости",
+                m3Desc: "Чистка зубов и обработка десен под седацией в ветеринарной клинике.",
+                m3Badge: "Требуется",
+                m4Title: "УЗИ брюшной полости",
+                m4Desc: "Рекомендовано в клинике «Киви» (д-р Болюх / Михайлова).",
+                m4Badge: "Требуется",
+                docsTitle: "Документы и анализы",
+                doc1Title: "Анализ крови (27.06)",
+                doc1Sub: "PDF • Клиника ZooFamily",
+                doc2Title: "Назначения врача",
+                doc2Sub: "PDF • Рекомендации",
+                musicTitle: "Благотворительные выступления",
+                musicDesc: "В ближайшее время я планирую проводить небольшие акустические выступления (играю на гитаре и пою) на улицах и площадках Тбилиси в поддержку сбора средств для Котика. Следите за обновлениями и новыми фото/видео на этой странице!"
+            },
+            en: {
+                navLogo: "Kotik's Page",
+                catTitle: "Kotik",
+                catSubtitle: "Street cat from Tbilisi",
+                tagAge: "Young (~3 years)",
+                tagNature: "Calm & Independent",
+                tagFiv: "FIV positive +",
+                catBio: "Kotik is a young, calm, and very independent street cat living in Tbilisi. During a recent vet checkup, he tested positive for FIV (Feline Immunodeficiency Virus) and showed signs of inflammation. I personally covered his initial exam, blood tests, parasite treatment, and basic meds. However, Kotik still urgently needs dental sanitation under sedation, an abdominal ultrasound, and follow-up care. I currently lack the funds to cover these procedures and humbly ask for your support.",
+                statusBadge: "Help Needed",
+                donateTitle: "Support Kotik's Treatment",
+                donateDesc: "Any amount will help cover upcoming dental cleaning under sedation, ultrasound, and care.",
+                donateBtnText: "Donate via Bank of Georgia",
+                qrCaption: "Scan QR code to donate easily",
+                medTitle: "Medical Status & Plan",
+                m1Title: "Blood Tests & Initial Exam",
+                m1Desc: "Paid by owner. Diagnosed with FIV & inflammation (WBC 23.2).",
+                m1Badge: "Done",
+                m2Title: "Parasite Treatment & Medications",
+                m2Desc: "NexGard Combo, Doxycycline course, and Trittico.",
+                m2Badge: "Done",
+                m3Title: "Dental Sanitation",
+                m3Desc: "Tooth cleaning and oral cavity treatment under sedation.",
+                m3Badge: "Needed",
+                m4Title: "Abdominal Ultrasound",
+                m4Desc: "Recommended at Kiwi Clinic (Dr. Bolyukh / Mykhailova).",
+                m4Badge: "Needed",
+                docsTitle: "Vet Documents & Reports",
+                doc1Title: "Blood Test Results",
+                doc1Sub: "PDF • ZooFamily Clinic",
+                doc2Title: "Vet Prescriptions",
+                doc2Sub: "PDF • Medical Plan",
+                musicTitle: "Charity Guitar Performances",
+                musicDesc: "I plan to perform street acoustic music sets (singing and playing guitar) around Tbilisi to help raise funds for Kotik. Stay tuned for new updates, photos, and video clips on this page!"
+            },
+            ka: {
+                navLogo: "კოტიკის გვერდი",
+                catTitle: "კოტიკი",
+                catSubtitle: "ქუჩის კატა თბილისიდან",
+                tagAge: "ახალგაზრდა (~3 წლის)",
+                tagNature: "მშვიდი & დამოუკიდებელი",
+                tagFiv: "FIV (ვიკ) დადებითი +",
+                catBio: "კოტიკი არის ახალგაზრდა, მშვიდი და ძალიან დამოუკიდებელი ქუჩის კატა თბილისიდან. ვეტერინარულმა შემოწმებამ აჩვენა კატების იმუნოდეფიციტის ვირუსი (FIV) და ანთებითი პროცესი. მე პირადად გადავიხადე პირველადი გასინჯვა, სისხლის ანალიზები და პარაზიტების საწინააღმდეგო დამუშავება. კოტიკს ესაჭიროება პირის ღრუს სანიტაცია სედაციით, მუცლის ღრუს ულტრაბგერითი გამოკვლევა (ექოსკოპია) და მკურნალობა. ამის სახსრები სამწუხაროდ არ მაქვს და თქვენი დახმარების იმედი მაქვს.",
+                statusBadge: "საჭიროებს დახმარებას",
+                donateTitle: "დაეხმარეთ კოტიკის მკურნალობას",
+                donateDesc: "ნებისმიერი თანხა დაგვეხმარება სტომატოლოგიური პროცედურისა და ექოსკოპიის დაფინანსებაში.",
+                donateBtnText: "გადარიცხვა Bank of Georgia-ში",
+                qrCaption: "დაასკანერეთ QR კოდი სწრაფი გადარიცხვისთვის",
+                medTitle: "სამედიცინო სტატუსი და გეგმა",
+                m1Title: "სისხლის ანალიზი და გასინჯვა",
+                m1Desc: "გადახდილია. გამოვლინდა FIV და ანთება (WBC 23.2).",
+                m1Badge: "შესრულებულია",
+                m2Title: "პარაზიტებისგან დამუშავება და მედიკამენტები",
+                m2Desc: "NexGard Combo, დოქსიციკლინი და ტრიტიკო.",
+                m2Badge: "შესრულებულია",
+                m3Title: "პირის ღრუს სანიტაცია",
+                m3Desc: "კბილების გაწმენდა სედაციის ქვეშ ვეტერინარულ კლინიკაში.",
+                m3Badge: "საჭიროა",
+                m4Title: "მუცლის ღრუს ულტრაბგერა (ექოსკოპია)",
+                m4Desc: "რეკომენდებულია კლინიკა «კივი»-ში.",
+                m4Badge: "საჭიროა",
+                docsTitle: "დოკუმენტები და ანალიზები",
+                doc1Title: "სისხლის ანალიზი (27.06)",
+                doc1Sub: "PDF • კლინიკა ZooFamily",
+                doc2Title: "ექიმის დანიშნულება",
+                doc2Sub: "PDF • რეკომენდაციები",
+                musicTitle: "საქველმოქმედო გამოსვლები",
+                musicDesc: "უახლოეს მომავალში ვგეგმავ მცირე აკუსტიკურ გამოსვლებს (გიტარაზე დაკვრა და სიმღერა) თბილისში კოტიკის მხარდასაჭერად. ადევნეთ თვალი სიახლეებს!"
+            }
+        };
+
+        function setLanguage(lang, btn) {
+            document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+            if(btn) btn.classList.add('active');
+
+            const t = translations[lang];
+            
+            document.getElementById('nav-logo').innerText = t.navLogo;
+            document.getElementById('cat-title').innerText = t.catTitle;
+            document.getElementById('cat-subtitle').innerText = t.catSubtitle;
+            document.getElementById('tag-age').innerText = t.tagAge;
+            document.getElementById('tag-nature').innerText = t.tagNature;
+            document.getElementById('tag-fiv').innerText = t.tagFiv;
+            document.getElementById('cat-bio').innerText = t.catBio;
+            document.getElementById('status-badge').innerText = t.statusBadge;
+            
+            document.getElementById('donate-title').innerText = t.donateTitle;
+            document.getElementById('donate-desc').innerText = t.donateDesc;
+            document.getElementById('donate-btn-text').innerText = t.donateBtnText;
+            document.getElementById('qr-caption').innerText = t.qrCaption;
+            
+            document.getElementById('med-title').innerText = t.medTitle;
+            document.getElementById('m1-title').innerText = t.m1Title;
+            document.getElementById('m1-desc').innerText = t.m1Desc;
+            document.getElementById('m1-badge').innerText = t.m1Badge;
+
+            document.getElementById('m2-title').innerText = t.m2Title;
+            document.getElementById('m2-desc').innerText = t.m2Desc;
+            document.getElementById('m2-badge').innerText = t.m2Badge;
+
+            document.getElementById('m3-title').innerText = t.m3Title;
+            document.getElementById('m3-desc').innerText = t.m3Desc;
+            document.getElementById('m3-badge').innerText = t.m3Badge;
+
+            document.getElementById('m4-title').innerText = t.m4Title;
+            document.getElementById('m4-desc').innerText = t.m4Desc;
+            document.getElementById('m4-badge').innerText = t.m4Badge;
+
+            document.getElementById('docs-title').innerText = t.docsTitle;
+            document.getElementById('doc1-title').innerText = t.doc1Title;
+            document.getElementById('doc1-sub').innerText = t.doc1Sub;
+            document.getElementById('doc2-title').innerText = t.doc2Title;
+            document.getElementById('doc2-sub').innerText = t.doc2Sub;
+
+            document.getElementById('music-title').innerText = t.musicTitle;
+            document.getElementById('music-desc').innerText = t.musicDesc;
+        }
+
+        function switchPhoto(src, element) {
+            document.getElementById('main-image').src = src;
+            document.querySelectorAll('.thumb-item').forEach(item => item.classList.remove('active'));
+            element.classList.add('active');
+        }
+    </script>
+</body>
+</html>

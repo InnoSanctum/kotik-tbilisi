@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pet profile</title>
+    <meta name="description" content="Animal profile with gallery, description, contact curator and documents.">
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+    <link rel="alternate icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Noto+Sans+Georgian:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+    <header>
+        <div class="nav-container">
+            <a href="index.html" class="logo">
+                <i class="fa-solid fa-paw"></i><span id="nav-logo">Help Pets</span>
+            </a>
+            <div class="lang-switcher">
+                <button type="button" class="lang-btn" data-lang="ru">RU</button>
+                <button type="button" class="lang-btn" data-lang="en">EN</button>
+                <button type="button" class="lang-btn" data-lang="ka">GE</button>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <nav class="hero-card">
+            <a id="back-link" class="button" href="index.html">Back to pet list</a>
+        </nav>
+
+        <section class="detail-hero detail-grid" id="pet-detail">
+            <div class="detail-card">
+                <div class="detail-meta">
+                    <h1 id="detail-title">Kotik</h1>
+                    <h2 id="detail-subtitle">Street cat from Tbilisi</h2>
+                    <div class="badge-row">
+                        <span id="detail-location" class="tag-pill">Tbilisi</span>
+                        <span id="detail-status" class="tag-pill warning">Help needed</span>
+                    </div>
+                    <div id="detail-tags" class="tags"></div>
+                </div>
+                <div class="detail-section">
+                    <h3><i class="fa-solid fa-info-circle"></i> Описание</h3>
+                    <p id="detail-description">Full profile description will appear here.</p>
+                </div>
+                <div class="detail-section docs-grid" id="docs-grid"></div>
+            </div>
+
+            <div class="detail-card">
+                <div class="main-img-container">
+                    <div class="img-wrapper">
+                        <img id="main-image" src="media/kotik-2026-03-12.webp" alt="Main pet image">
+                    </div>
+                </div>
+                <div class="contact-card">
+                    <h3><i class="fa-solid fa-phone"></i> Контакты куратора</h3>
+                    <div id="contacts"></div>
+                </div>
+                <div class="video-card" id="video-section">
+                    <h3><i class="fa-solid fa-video"></i> Видео / Reel</h3>
+                    <div class="video-embed"></div>
+                </div>
+                <div class="status-card">
+                    <h3 id="donate-title"><i class="fa-solid fa-heart"></i> Пожертвование</h3>
+                    <a id="donate-link" class="button" href="#" target="_blank" rel="noopener noreferrer">Перевести помощь</a>
+                    <div class="qr-block" id="donate-qr-block">
+                        <img id="donate-qr" src="" alt="QR code for donation" hidden>
+                        <p id="qr-caption" class="qr-caption"></p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="notes" id="not-found" hidden>
+            Pet not found. Return to the list and select another profile.
+        </div>
+    </main>
+
+    <footer>
+        <p>© 2026 Help Pets. Profiles are generated from local JSON data and work on GitHub Pages.</p>
+    </footer>
+
+    <script src="pets.js"></script>
+    <script src="assets/data.js"></script>
+    <script src="assets/pet.js"></script>
+</body>
+</html>

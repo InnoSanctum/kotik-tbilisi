@@ -177,8 +177,44 @@ console.log('\nShared catalogues');
     row.doc.tags.every((t) => typeof t === 'string'));
   check('curator is not duplicated into doc', row.doc.curator === undefined);
   check('donation is not duplicated into doc', row.doc.donate === undefined);
-  check('mainPhoto not duplicated into doc', row.doc.mainPhoto === undefined);
+  check('mainPhoto IS persisted', !!(row.doc.mainPhoto && row.doc.mainPhoto.src),
+    JSON.stringify(row.doc.mainPhoto));
   check('story still present', row.doc.description.ru.length > 1500);
+
+  /* Regression: a pet whose only photo is the main one used to lose it on
+     save, because toRow() dropped mainPhoto assuming gallery[0] could rebuild
+     it. With an empty gallery there is nothing to rebuild from. */
+  console.log('\nMain photo with no gallery (regression)');
+  const onlyMain = {
+    slug: 'tayra', published: true, sortOrder: 3,
+    name: { ru: 'Тайра' }, subtitle: {}, location: {}, status: {}, statusType: 'info',
+    tags: [], gallery: [],
+    mainPhoto: { type: 'image', src: 'https://cdn.example/tayra.jpg', thumb: '', alt: { ru: 'Тайра' } },
+    shortDescription: {}, description: {},
+    video: { type: 'video', src: 'https://cdn.example/tayra.mp4', thumb: '', alt: {} },
+    carePlan: [], docs: [], sections: [],
+    donate: { slug: '', url: '', qr: '', label: {}, note: {} },
+    curator: { slug: '', name: {}, bio: {}, photoAlt: {} },
+  };
+  const onlyMainRow = DB.toRow(onlyMain);
+  check('the single photo survives toRow',
+    onlyMainRow.doc.mainPhoto && onlyMainRow.doc.mainPhoto.src === 'https://cdn.example/tayra.jpg',
+    JSON.stringify(onlyMainRow.doc.mainPhoto));
+
+  const reloaded = DB.normalisePet(onlyMainRow, ctx);
+  check('card image survives the round trip',
+    reloaded.mainPhoto && reloaded.mainPhoto.src === 'https://cdn.example/tayra.jpg',
+    JSON.stringify(reloaded.mainPhoto));
+  check('it also becomes the first gallery slide',
+    reloaded.gallery.length === 1 && reloaded.gallery[0].src === 'https://cdn.example/tayra.jpg',
+    `${reloaded.gallery.length} slides`);
+  check('the video is kept alongside it',
+    reloaded.video && reloaded.video.src === 'https://cdn.example/tayra.mp4');
+
+  /* Saving twice must not accumulate duplicate slides. */
+  const twice = DB.normalisePet(DB.toRow(reloaded), ctx);
+  check('re-saving does not duplicate the photo',
+    twice.gallery.length === 1, `${twice.gallery.length} slides`);
 
   /* Round-trip: the row must render back to the same thing. */
   const back = DB.normalisePet(row, ctx);

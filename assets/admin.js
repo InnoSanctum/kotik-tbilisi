@@ -959,7 +959,8 @@
 
     var records = pets.map(function (p) {
       var copy = JSON.parse(JSON.stringify(p));
-      delete copy.mainPhoto;                 // rebuilt from gallery[0] on load
+      /* mainPhoto stays: a pet whose only photo is the main one has no
+         gallery[0] for it to be rebuilt from. */
       delete copy.curatorId;
       delete copy.donationId;
       copy.tags = (copy.tags || []).map(function (t) { return t.id; });

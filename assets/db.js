@@ -249,7 +249,14 @@
     delete doc.curatorId;
     delete doc.donate;
     delete doc.donationId;
-    delete doc.mainPhoto;   // rebuilt from gallery[0] on load
+
+    /*
+     * mainPhoto is KEPT. It used to be dropped here on the theory that
+     * normalisePet rebuilds it from gallery[0] — which is only true when the
+     * main photo is also in the gallery. An animal whose single photo is the
+     * main one has no gallery[0] to rebuild from, so the path was simply
+     * erased on save and the card rendered with an empty image box.
+     */
 
     /* Store tag ids only; labels belong to the tags table. */
     doc.tags = (pet.tags || []).map(function (t) {

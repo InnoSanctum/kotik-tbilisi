@@ -405,7 +405,7 @@
           c.slug = slugInput.value;
         }
       }));
-      fields.appendChild(uploadField('Photo', c, 'photo'));
+      fields.appendChild(uploadField('Photo', c, 'photo', null, { profile: 'portrait' }));
       fields.appendChild(localisedField('Photo alt text', c.photoAlt));
       fields.appendChild(localisedField('Bio', c.bio, { multiline: true, rows: 4 }));
       fields.appendChild(textField('Email', c, 'email', { type: 'email' }));
@@ -498,7 +498,8 @@
       ]));
 
       var upload = uploadField('Or upload a QR image', d, 'qr',
-        'Overrides the generated code.');
+        'Overrides the generated code. Uploaded as-is — re-compressing a QR can stop it scanning.',
+        { profile: 'raw' });
       upload.querySelector('input[type="text"]').addEventListener('input', drawQr);
       fields.appendChild(upload);
 
@@ -541,7 +542,17 @@
    * plain path like "media/kotik-2026-03-12.webp" for files committed to the
    * repository, which is how the existing photos are served.
    */
-  function uploadField(label, obj, key, hint) {
+  /*
+   * opts:
+   *   profile  which PetImaging recipe to apply — 'photo' (default),
+   *            'portrait', 'document', or 'raw' to upload the file untouched
+   *   thumbKey when the profile produces a thumbnail, the sibling field on the
+   *            same object to drop its URL into
+   */
+  function uploadField(label, obj, key, hint, opts) {
+    opts = opts || {};
+    var profile = opts.profile || 'photo';
+
     var input = el('input', { type: 'text', placeholder: 'media/photo.webp' });
     input.value = obj[key] || '';
     input.addEventListener('input', function () { obj[key] = input.value.trim(); });
@@ -554,35 +565,88 @@
     syncPreview();
     input.addEventListener('input', syncPreview);
 
+    var note = el('p.field-hint.upload-note', { hidden: true });
+
     var file = el('input.upload-input', { type: 'file', accept: 'image/*,video/mp4' });
     file.addEventListener('change', function () {
       if (!file.files || !file.files[0]) return;
-      status('Uploading…', 'info');
-      uploadToStorage(file.files[0]).then(function (url) {
-        obj[key] = url;
-        input.value = url;
-        syncPreview();
+      var chosen = file.files[0];
+
+      status('Preparing…', 'info');
+      window.PetImaging.prepare(chosen, profile).then(function (prepared) {
+        if (!prepared) {
+          /* Video, a document type we do not touch, or a decode failure —
+             upload the original rather than refusing. */
+          status('Uploading…', 'info');
+          return uploadToStorage(chosen).then(function (url) {
+            applyResult(url, null);
+            note.hidden = true;
+          });
+        }
+
+        status('Uploading…', 'info');
+        var baseName = chosen.name.replace(/\.[^.]+$/, '');
+        var jobs = [uploadToStorage(prepared.full, baseName + '.' + prepared.ext)];
+        if (prepared.thumb) {
+          jobs.push(uploadToStorage(prepared.thumb, baseName + '-thumb.' + prepared.ext));
+        }
+
+        return Promise.all(jobs).then(function (urls) {
+          applyResult(urls[0], urls[1] || null);
+
+          var fmt = window.PetImaging.formatBytes;
+          note.hidden = false;
+          note.textContent = 'Resized to ' + prepared.width + '×' + prepared.height +
+            ' — ' + fmt(prepared.originalBytes) + ' → ' + fmt(prepared.bytes) +
+            '. Location data and other metadata removed.';
+        });
+      }).then(function () {
         status('Uploaded.', 'ok');
       }).catch(function (err) {
         status('Upload failed: ' + describeError(err), 'error');
       });
     });
 
-    return el('div.field', {}, [
+    function applyResult(url, thumbUrl) {
+      obj[key] = url;
+      input.value = url;
+      syncPreview();
+      /* Only fill the thumbnail if it is still empty — never clobber one the
+         curator chose by hand. */
+      if (thumbUrl && opts.thumbKey && !obj[opts.thumbKey]) {
+        obj[opts.thumbKey] = thumbUrl;
+        if (opts.onThumb) opts.onThumb(thumbUrl);
+      }
+    }
+
+    var field = el('div.field', {}, [
       el('label.field-label', { text: label }),
       hint ? el('p.field-hint', { text: hint }) : null,
       input,
-      el('div.upload-row', {}, [file, preview])
+      el('div.upload-row', {}, [file, preview]),
+      note
     ]);
+
+    /* Lets a sibling field redraw this one — the main-photo upload fills in
+       the thumbnail's value, and without this the box would still look empty
+       and the curator would reasonably assume the upload failed. */
+    field.refresh = function () {
+      input.value = obj[key] || '';
+      syncPreview();
+    };
+
+    return field;
   }
 
-  function uploadToStorage(fileObj) {
+  function uploadToStorage(fileObj, nameOverride) {
     var base = window.PetDB.urlBase;
     if (!base) return Promise.reject(new Error('not-configured'));
 
     /* Date-prefixed name keeps uploads ordered and collision-free without
-       needing to read the bucket first. */
-    var safe = fileObj.name.toLowerCase().replace(/[^a-z0-9.]+/g, '-');
+       needing to read the bucket first. A processed blob has no name of its
+       own, so the caller passes one. */
+    var name = nameOverride || fileObj.name || 'upload';
+    var safe = name.toLowerCase().replace(/[^a-z0-9.]+/g, '-');
     var path = (draft && draft.slug ? draft.slug : 'misc') + '/' + Date.now() + '-' + safe;
 
     return window.PetAuth.ensureFresh().then(function (token) {
@@ -702,10 +766,17 @@
 
     /* --- main photo --- */
     if (!pet.mainPhoto) pet.mainPhoto = { type: 'image', src: '', thumb: '', alt: {} };
+    /* Built before the image field so the latter can refresh it. */
+    var petMainThumbField = uploadField('Thumbnail (optional)', pet.mainPhoto, 'thumb',
+      'Filled in automatically from the image above.', { profile: 'thumbnail' });
+    var petMainImageField = uploadField('Image', pet.mainPhoto, 'src',
+      'Used on the card and as the first gallery slide. Large photos are resized automatically.',
+      { thumbKey: 'thumb', onThumb: function () { petMainThumbField.refresh(); } });
+
     host.appendChild(el('section.admin-block', {}, [
       el('h3', { text: 'Main photo' }),
-      uploadField('Image', pet.mainPhoto, 'src', 'Used on the card and as the first gallery slide.'),
-      uploadField('Thumbnail (optional)', pet.mainPhoto, 'thumb'),
+      petMainImageField,
+      petMainThumbField,
       localisedField('Alt text', pet.mainPhoto.alt, {
         hint: 'Describes the photo for screen readers and search engines.'
       })
@@ -715,6 +786,7 @@
     host.appendChild(repeater('Gallery', pet.gallery,
       function () { return { type: 'image', src: '', thumb: '', alt: {} }; },
       function (item) {
+        var thumbField = uploadField('Thumbnail', item, 'thumb', null, { profile: 'thumbnail' });
         return el('div', {}, [
           selectField('Type', item, 'type', [
             { value: 'image', label: 'Image' },
@@ -723,8 +795,11 @@
           ]),
           item.type === 'youtube'
             ? textField('YouTube video ID', item, 'id', { placeholder: 'dQw4w9WgXcQ' })
-            : uploadField('File', item, 'src'),
-          uploadField('Thumbnail', item, 'thumb'),
+            : uploadField('File', item, 'src', null, {
+                thumbKey: 'thumb',
+                onThumb: function () { thumbField.refresh(); }
+              }),
+          thumbField,
           localisedField('Alt text', item.alt)
         ]);
       },
@@ -741,7 +816,7 @@
         { value: 'video', label: 'Video file (mp4)' }
       ]),
       textField('YouTube video ID', pet.video, 'id', { placeholder: 'e.g. M7lc1UVf-VE' }),
-      uploadField('or video file', pet.video, 'src'),
+      uploadField('or video file', pet.video, 'src', null, { profile: 'raw' }),
       uploadField('Poster image', pet.video, 'thumb'),
       localisedField('Alt text', pet.video.alt)
     ]));
@@ -770,7 +845,9 @@
       function () { return { href: '', label: {}, sub: {} }; },
       function (item) {
         return el('div', {}, [
-          uploadField('File', item, 'href', 'Scan or photo of the test result.'),
+          uploadField('File', item, 'href',
+            'Scan or photo of the test result. Kept large and lightly compressed so it stays readable.',
+            { profile: 'document' }),
           localisedField('Title', item.label),
           localisedField('Subtitle', item.sub)
         ]);
@@ -892,16 +969,23 @@
     ]));
 
     if (!gig.mainPhoto) gig.mainPhoto = { type: 'image', src: '', thumb: '', alt: {} };
+    var gigMainThumbField = uploadField('Thumbnail (optional)', gig.mainPhoto, 'thumb',
+      'Filled in automatically from the image above.', { profile: 'thumbnail' });
+    var gigMainImageField = uploadField('Image', gig.mainPhoto, 'src',
+      'Used on the card and as the first gallery slide. Large photos are resized automatically.',
+      { thumbKey: 'thumb', onThumb: function () { gigMainThumbField.refresh(); } });
+
     host.appendChild(el('section.admin-block', {}, [
       el('h3', { text: 'Main photo' }),
-      uploadField('Image', gig.mainPhoto, 'src', 'Used on the card and as the first gallery slide.'),
-      uploadField('Thumbnail (optional)', gig.mainPhoto, 'thumb'),
+      gigMainImageField,
+      gigMainThumbField,
       localisedField('Alt text', gig.mainPhoto.alt)
     ]));
 
     host.appendChild(repeater('Photos and video', gig.gallery,
       function () { return { type: 'image', src: '', thumb: '', alt: {} }; },
       function (item) {
+        var thumbField = uploadField('Thumbnail', item, 'thumb', null, { profile: 'thumbnail' });
         return el('div', {}, [
           selectField('Type', item, 'type', [
             { value: 'image', label: 'Image' },
@@ -910,8 +994,11 @@
           ]),
           item.type === 'youtube'
             ? textField('YouTube video ID', item, 'id', { placeholder: 'dQw4w9WgXcQ' })
-            : uploadField('File', item, 'src'),
-          uploadField('Thumbnail', item, 'thumb'),
+            : uploadField('File', item, 'src', null, {
+                thumbKey: 'thumb',
+                onThumb: function () { thumbField.refresh(); }
+              }),
+          thumbField,
           localisedField('Alt text', item.alt)
         ]);
       },

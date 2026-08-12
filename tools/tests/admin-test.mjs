@@ -579,6 +579,81 @@ console.log('\nAdmin: saving writes the shared records first');
   check('generated slug used', petPost.slug === 'barsik', petPost.slug);
 }
 
+/* ------------------------------------------------------------ uploads --- */
+console.log('\nAdmin: uploading a photo resizes it and fills the thumbnail');
+{
+  const { w, d, backend } = await signedInAdmin();
+  d.getElementById('new-pet').dispatchEvent(new w.Event('click', { bubbles: true }));
+  await settle();
+
+  /* jsdom has no canvas, so stand in for the resizer and assert on what the
+     admin does with its result. The arithmetic itself is covered by
+     imaging-test.mjs. */
+  const asked = [];
+  w.PetImaging.prepare = (file, profile) => {
+    asked.push({ name: file.name, profile });
+    if (profile === 'raw' || !/^image\//.test(file.type)) return Promise.resolve(null);
+    return Promise.resolve({
+      full: { type: 'image/webp', size: 180000 },
+      thumb: profile === 'photo' ? { type: 'image/webp', size: 20000 } : null,
+      ext: 'webp', originalBytes: 5 * 1024 * 1024, bytes: 200000,
+      width: 1600, height: 1200,
+    });
+  };
+
+  const mainBlock = [...d.querySelectorAll('section.admin-block')]
+    .find((s) => s.querySelector('h3') && s.querySelector('h3').textContent === 'Main photo');
+  const fileInput = mainBlock.querySelector('input[type="file"]');
+  const file = { name: 'IMG_2026.JPG', type: 'image/jpeg', size: 5 * 1024 * 1024 };
+  Object.defineProperty(fileInput, 'files', { value: [file], configurable: true });
+
+  fileInput.dispatchEvent(new w.Event('change', { bubbles: true }));
+  await settle(400);
+
+  check('the resizer was asked for the photo recipe',
+    asked.some((a) => a.profile === 'photo'), JSON.stringify(asked));
+
+  const uploads = backend.calls.filter((c) => c.url.includes('/storage/v1/object/pet-media/'));
+  check('uploads both the photo and its thumbnail', uploads.length === 2,
+    `${uploads.length} upload(s)`);
+  check('uploaded as .webp, not the original .JPG',
+    uploads.every((u) => u.url.endsWith('.webp')), uploads.map((u) => u.url).join(' | '));
+  check('thumbnail named distinctly',
+    uploads.some((u) => u.url.includes('-thumb.webp')), uploads.map((u) => u.url).join(' | '));
+
+  const textInputs = [...mainBlock.querySelectorAll('input[type="text"]')];
+  check('image field filled', /pet-media\/.*\.webp$/.test(textInputs[0].value), textInputs[0].value);
+  check('thumbnail field filled automatically',
+    /-thumb\.webp$/.test(textInputs[1].value), textInputs[1].value);
+
+  const note = mainBlock.querySelector('.upload-note');
+  check('reports the size saving', note && /5\.0 MB/.test(note.textContent) && /1600×1200/.test(note.textContent),
+    note && note.textContent);
+  check('mentions metadata removal', note && /metadata removed/i.test(note.textContent));
+}
+
+console.log('\nAdmin: a QR image is never re-encoded');
+{
+  const { w, d } = await signedInAdmin();
+  d.getElementById('new-pet').dispatchEvent(new w.Event('click', { bubbles: true }));
+  await settle();
+
+  const asked = [];
+  w.PetImaging.prepare = (file, profile) => { asked.push(profile); return Promise.resolve(null); };
+
+  const donationBlock = [...d.querySelectorAll('section.admin-block')]
+    .find((s) => s.querySelector('h3') && s.querySelector('h3').textContent === 'Donation');
+  const fileInput = donationBlock.querySelector('input[type="file"]');
+  Object.defineProperty(fileInput, 'files', {
+    value: [{ name: 'qr.png', type: 'image/png', size: 9000 }], configurable: true,
+  });
+  fileInput.dispatchEvent(new w.Event('change', { bubbles: true }));
+  await settle(300);
+
+  /* Lossy re-compression can stop a QR scanning, so it must go up untouched. */
+  check('QR uses the raw recipe', asked.includes('raw'), JSON.stringify(asked));
+}
+
 /* --------------------------------------------------------------- gigs --- */
 console.log('\nAdmin: performances tab');
 {

@@ -365,7 +365,7 @@ PAGE_SCRIPTS = {
                    "assets/db.js", "assets/ui.js", "assets/gallery.js", "assets/gig.js"],
     "admin.html": ["config.js", "assets/i18n.js", "data/pets.js", "assets/auth.js",
                    "assets/db.js", "assets/ui.js", "assets/slug.js", "assets/qr.js",
-                   "assets/admin.js"],
+                   "assets/imaging.js", "assets/admin.js"],
 }
 
 # Element ids each page's renderer looks up by hand.

@@ -987,6 +987,69 @@ footer {
 .icon-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 .icon-btn-danger:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); }
 
+/* Text input with an action button welded to its right-hand side. */
+.input-with-button {
+    display: flex;
+    gap: 0.5rem;
+    align-items: stretch;
+    flex-wrap: wrap;
+}
+.input-with-button input {
+    flex: 1;
+    min-width: 180px;
+    padding: 0.6rem 0.85rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font: inherit;
+    font-size: 0.92rem;
+    background: var(--card-bg);
+    color: inherit;
+}
+.input-with-button input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-soft);
+}
+.input-with-button .button { white-space: nowrap; }
+
+.slug-preview {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--primary);
+    margin-top: 0.4rem;
+    margin-bottom: 0;
+}
+
+.repeater-index code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    background: #f1f5f9;
+    padding: 2px 7px;
+    border-radius: var(--radius-sm);
+    margin-right: 0.4rem;
+    color: var(--text-main);
+}
+
+/* QR preview in the donation editor. */
+.qr-row { display: flex; align-items: flex-start; gap: 1rem; flex-wrap: wrap; }
+.qr-preview {
+    width: 140px;
+    height: 140px;
+    flex-shrink: 0;
+    padding: 8px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.qr-preview:empty { border-style: dashed; }
+.qr-preview svg, .qr-preview img { width: 100%; height: auto; display: block; }
+.qr-actions { display: flex; flex-direction: column; gap: 0.5rem; }
+
+/* The pet page draws its QR into the same .qr-code box used for an uploaded
+   image, so give the generated SVG the size the <img> would have had. */
+.qr-code svg { width: 150px; height: 150px; display: block; }
+
 .upload-row { display: flex; align-items: center; gap: 0.85rem; margin-top: 0.5rem; flex-wrap: wrap; }
 .upload-input { font-size: 0.82rem; color: var(--text-muted); flex: 1; min-width: 180px; }
 .upload-preview {

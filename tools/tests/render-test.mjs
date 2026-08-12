@@ -40,10 +40,14 @@ async function render(page, url) {
   const win = dom.window;
   const doc = win.document;
   for (const tag of [...doc.querySelectorAll('script[src]')]) {
-    const code = readFileSync(join(ROOT, tag.getAttribute('src')), 'utf8');
+    const src = tag.getAttribute('src');
     const s = doc.createElement('script');
-    s.textContent = code;
+    s.textContent = readFileSync(join(ROOT, src), 'utf8');
     doc.head.appendChild(s);
+    /* config.js holds the developer's real project. These suites assert the
+       static-seed path, so blank it out rather than depending on whatever
+       happens to be committed. */
+    if (src === 'config.js') win.SITE_CONFIG.supabase = { url: '', anonKey: '' };
   }
   win.document.dispatchEvent(new win.Event('DOMContentLoaded', { bubbles: true }));
   await new Promise((r) => setTimeout(r, 250));

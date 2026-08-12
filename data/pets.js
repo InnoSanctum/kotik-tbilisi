@@ -14,6 +14,71 @@
  * are written in; anything missing falls back to it (see assets/i18n.js).
  * Adding a language means adding a key — no schema change, no code change.
  */
+/*
+ * Shared records: tags, curators and donation links.
+ *
+ * These are referenced by pets rather than copied into them, exactly as in the
+ * database (see supabase/schema.sql). One curator looks after several animals,
+ * and a tag only groups animals if everyone spells it the same way — so the
+ * text lives in one place and every pet points at it.
+ *
+ * The admin offers everything here as autocomplete suggestions.
+ */
+window.TAGS_SEED = [
+  { id: 'cat',        ru: 'Кот',                     en: 'Cat',                 ka: 'კატა' },
+  { id: 'dog',        ru: 'Собака',                  en: 'Dog',                 ka: 'ძაღლი' },
+  { id: 'young',      ru: 'Молодой (~3 года)',       en: 'Young (~3 years)',    ka: 'ახალგაზრდა (~3 წლის)' },
+  { id: 'calm',       ru: 'Спокойный & независимый', en: 'Calm & independent',  ka: 'მშვიდი & დამოუკიდებელი' },
+  { id: 'fiv',        ru: 'ВИК (FIV) +',             en: 'FIV positive +',      ka: 'FIV (ვიკ) დადებითი +' },
+  { id: 'tbilisi',    ru: 'Тбилиси',                 en: 'Tbilisi',             ka: 'თბილისი' },
+  { id: 'needs-home', ru: 'Ищет дом',                en: 'Needs a home',        ka: 'ეძებს სახლს' },
+  { id: 'vaccinated', ru: 'Привит',                  en: 'Vaccinated',          ka: 'აცრილი' },
+  { id: 'sterilised', ru: 'Стерилизован',            en: 'Sterilised',          ka: 'სტერილიზებული' }
+];
+
+window.CURATORS_SEED = [
+  {
+    slug: 'mykhailo',
+    name: { ru: 'Михаил (Михайло)', en: 'Mykhailo (Mikhail)', ka: 'მიხაილო' },
+    photo: 'assets/author.webp',
+    photoAlt: {
+      ru: 'Михайло, автор страницы',
+      en: 'Mykhailo, the author of this page',
+      ka: 'მიხაილო, გვერდის ავტორი'
+    },
+    bio: {
+      ru: 'Работаю в айти на низовой должности. Сам из Украины, живу в Грузии. Играю на гитаре, пою в хоре и очень люблю котиков.',
+      en: 'I work an entry-level job in IT. I’m from Ukraine and I live in Georgia. I play guitar, sing in a choir, and I love cats.',
+      ka: 'ვმუშაობ IT-ში დაბალ თანამდებობაზე. წარმოშობით უკრაინიდან ვარ, ვცხოვრობ საქართველოში. ვუკრავ გიტარაზე, ვმღერი გუნდში და ძალიან მიყვარს კატები.'
+    },
+    email: 'innosanctum@gmail.com',
+    telegram: 'https://t.me/innosanctum',
+    instagram: 'https://www.instagram.com/mserhiievskyi/'
+  }
+];
+
+window.DONATIONS_SEED = [
+  {
+    slug: 'kotik-bog',
+    url: 'https://egreve.bog.ge/For_Kotik',
+    /* The bank's own QR image, kept rather than generated: a bank code can
+       carry a payment payload that a plain URL cannot. Clear this and the site
+       draws one from `url` in the browser instead — which is what happens for
+       any new link, so a QR is never missing. */
+    qr: 'assets/qr_code.png',
+    label: {
+      ru: 'Перевести в Bank of Georgia',
+      en: 'Donate via Bank of Georgia',
+      ka: 'გადარიცხვა Bank of Georgia-ში'
+    },
+    note: {
+      ru: 'Любая сумма поможет оплатить предстоящую чистку зубов под седацией, УЗИ и необходимые медикаменты.',
+      en: 'Any amount helps cover the upcoming dental cleaning under sedation, the ultrasound, and medication.',
+      ka: 'ნებისმიერი თანხა დაგვეხმარება სტომატოლოგიური პროცედურის, ექოსკოპიისა და მედიკამენტების დაფინანსებაში.'
+    }
+  }
+];
+
 window.PETS_SEED = [
   {
     slug: 'kotik',
@@ -42,16 +107,9 @@ window.PETS_SEED = [
     },
     statusType: 'warning',
 
-    /* Tags carry a stable `id` so filtering survives a language switch, plus a
-       label per language for display. */
-    tags: [
-      { id: 'cat',       ru: 'Кот',                    en: 'Cat',                  ka: 'კატა' },
-      { id: 'young',     ru: 'Молодой (~3 года)',      en: 'Young (~3 years)',     ka: 'ახალგაზრდა (~3 წლის)' },
-      { id: 'calm',      ru: 'Спокойный & независимый', en: 'Calm & independent',  ka: 'მშვიდი & დამოუკიდებელი' },
-      { id: 'fiv',       ru: 'ВИК (FIV) +',            en: 'FIV positive +',       ka: 'FIV (ვიკ) დადებითი +' },
-      { id: 'tbilisi',   ru: 'Тбилиси',                en: 'Tbilisi',              ka: 'თბილისი' },
-      { id: 'needs-home', ru: 'Ищет дом',              en: 'Needs a home',         ka: 'ეძებს სახლს' }
-    ],
+    /* Tag ids only — the labels live once in TAGS_SEED above, so renaming a
+       tag renames it on every animal at the same time. */
+    tags: ['cat', 'young', 'calm', 'fiv', 'tbilisi', 'needs-home'],
 
     mainPhoto: {
       src: 'media/kotik-2026-03-12.webp',
@@ -192,30 +250,9 @@ window.PETS_SEED = [
       }
     ],
 
-    donate: {
-      url: 'https://egreve.bog.ge/For_Kotik',
-      qr: 'assets/qr_code.png',
-      label: { ru: 'Перевести в Bank of Georgia', en: 'Donate via Bank of Georgia', ka: 'გადარიცხვა Bank of Georgia-ში' },
-      note: {
-        ru: 'Любая сумма поможет оплатить предстоящую чистку зубов под седацией, УЗИ и необходимые медикаменты.',
-        en: 'Any amount helps cover the upcoming dental cleaning under sedation, the ultrasound, and medication.',
-        ka: 'ნებისმიერი თანხა დაგვეხმარება სტომატოლოგიური პროცედურის, ექოსკოპიისა და მედიკამენტების დაფინანსებაში.'
-      }
-    },
-
-    curator: {
-      name: { ru: 'Михаил (Михайло)', en: 'Mykhailo (Mikhail)', ka: 'მიხაილო' },
-      photo: 'assets/author.webp',
-      photoAlt: { ru: 'Михайло, автор страницы', en: 'Mykhailo, the author of this page', ka: 'მიხაილო, გვერდის ავტორი' },
-      bio: {
-        ru: 'Работаю в айти на низовой должности. Сам из Украины, живу в Грузии. Играю на гитаре, пою в хоре и очень люблю котиков.',
-        en: 'I work an entry-level job in IT. I’m from Ukraine and I live in Georgia. I play guitar, sing in a choir, and I love cats.',
-        ka: 'ვმუშაობ IT-ში დაბალ თანამდებობაზე. წარმოშობით უკრაინიდან ვარ, ვცხოვრობ საქართველოში. ვუკრავ გიტარაზე, ვმღერი გუნდში და ძალიან მიყვარს კატები.'
-      },
-      email: 'innosanctum@gmail.com',
-      telegram: 'https://t.me/innosanctum',
-      instagram: 'https://www.instagram.com/mserhiievskyi/'
-    },
+    /* References into DONATIONS_SEED and CURATORS_SEED above. */
+    donationSlug: 'kotik-bog',
+    curatorSlug: 'mykhailo',
 
     /* Free-form blocks appended under the story. Kotik's is the charity gigs. */
     sections: [

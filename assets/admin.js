@@ -22,8 +22,10 @@
   var LANGS = i18n.LANGS;
 
   var pets = [];
+  var catalogues = { tags: [], curators: [], donations: [] };
   var draft = null;        // the record currently open in the editor
   var isNew = false;
+  var slugTouched = false; // has the curator typed a slug by hand?
 
   var nodes = {};
 
@@ -42,10 +44,32 @@
       shortDescription: {}, description: {},
       video: null,
       carePlan: [], docs: [],
-      donate: { url: '', qr: '', label: {}, note: {} },
-      curator: { name: {}, photo: '', photoAlt: {}, bio: {}, email: '', telegram: '', instagram: '', phone: '' },
+      donate: { slug: '', url: '', qr: '', label: {}, note: {} },
+      donationId: null,
+      curator: { slug: '', name: {}, photo: '', photoAlt: {}, bio: {}, email: '', telegram: '', instagram: '', phone: '' },
+      curatorId: null,
       sections: []
     };
+  }
+
+  /* Every slug currently in use, so a generated one can avoid them. */
+  function takenSlugs() {
+    return pets.map(function (p) { return p.slug; }).filter(Boolean);
+  }
+
+  /*
+   * Derive the slug from the name until the curator overrides it by hand.
+   *
+   * Names are Russian, so this transliterates: "Барсик" -> "barsik". A second
+   * Барсик becomes "barsik-2" rather than silently overwriting the first —
+   * the slug is the primary key, so a collision would replace a live record.
+   */
+  function refreshAutoSlug(input) {
+    if (slugTouched) return;
+    var source = window.I18N.pick(draft.name, window.I18N.FALLBACK) || window.I18N.pick(draft.name);
+    if (!source) return;
+    draft.slug = window.PetSlug.unique(source, takenSlugs(), isNew ? null : draft.slug);
+    if (input) input.value = draft.slug;
   }
 
   function status(message, kind) {
@@ -78,6 +102,7 @@
         var text = input.value;
         if (text) value[lang] = text;
         else delete value[lang];      // keep empties out of the row entirely
+        if (opts.onChange) opts.onChange(value, lang);
       });
       return el('div.lang-row', {}, [
         el('span.lang-tag' + (lang === i18n.FALLBACK ? '.lang-tag-primary' : ''), { text: lang.toUpperCase() }),
@@ -188,6 +213,290 @@
     ]);
   }
 
+  /* ------------------------------------------------------------- pickers */
+
+  /*
+   * Reusable "pick an existing record, or start a new one" control.
+   *
+   * The selected record's fields stay editable inline, and saving the pet
+   * writes them back to the shared table. So the same control both reuses a
+   * curator and corrects their Telegram handle everywhere at once.
+   */
+  function recordSelect(label, list, currentSlug, onPick) {
+    var select = el('select');
+    select.appendChild(el('option', { value: '', text: '— none —' }));
+    list.forEach(function (row) {
+      var name = i18n.pick(row.name) || i18n.pick(row.label) || row.url || row.slug;
+      var option = el('option', { value: row.slug, text: name + '  (' + row.slug + ')' });
+      if (row.slug === currentSlug) option.selected = true;
+      select.appendChild(option);
+    });
+    var NEW = ' new';
+    select.appendChild(el('option', { value: NEW, text: '+ New…' }));
+
+    select.addEventListener('change', function () {
+      if (select.value === NEW) onPick(null);
+      else onPick(list.filter(function (r) { return r.slug === select.value; })[0] || null);
+    });
+
+    return el('div.field', {}, [el('label.field-label', { text: label }), select]);
+  }
+
+  /*
+   * Tags: add from the catalogue by typing, or invent a new one.
+   *
+   * A <datalist> rather than a custom dropdown — it is the browser's own
+   * autocomplete, so it works with the keyboard, on mobile, and with screen
+   * readers without any of that being reimplemented here.
+   */
+  function tagPicker(pet) {
+    var body = el('div.repeater-body');
+    var input = el('input', {
+      type: 'text',
+      placeholder: 'Start typing: fiv, needs a home…',
+      list: 'tag-suggestions',
+      autocomplete: 'off'
+    });
+
+    var datalist = el('datalist', { id: 'tag-suggestions' });
+    catalogues.tags.forEach(function (tag) {
+      /* Offer the label people read; the id follows automatically. */
+      datalist.appendChild(el('option', {
+        value: i18n.pick(tag) || tag.id,
+        label: tag.id
+      }));
+    });
+
+    function has(id) {
+      return pet.tags.some(function (t) { return (t.id || t) === id; });
+    }
+
+    function add(text) {
+      var typed = String(text || '').trim();
+      if (!typed) return;
+
+      /* Match the catalogue by id first, then by any language's label, so
+         typing either "fiv" or "ВИК (FIV) +" lands on the same tag. */
+      var found = null;
+      for (var i = 0; i < catalogues.tags.length; i++) {
+        var tag = catalogues.tags[i];
+        if (tag.id === typed.toLowerCase()) { found = tag; break; }
+        var labels = Object.keys(tag).filter(function (k) { return k !== 'id'; });
+        for (var j = 0; j < labels.length; j++) {
+          if (String(tag[labels[j]]).toLowerCase() === typed.toLowerCase()) { found = tag; break; }
+        }
+        if (found) break;
+      }
+
+      var entry = found ? JSON.parse(JSON.stringify(found))
+                        : { id: window.PetSlug.slugify(typed) || 'tag', ru: typed };
+      if (has(entry.id)) { status('That tag is already on this animal.', 'info'); return; }
+
+      pet.tags.push(entry);
+      input.value = '';
+      redraw();
+    }
+
+    function redraw() {
+      UI.clear(body);
+      if (!pet.tags.length) {
+        body.appendChild(el('p.field-hint.empty-hint', {
+          text: 'No tags yet. Tags are what the filters on the main page are built from.'
+        }));
+      }
+      pet.tags.forEach(function (tag, index) {
+        var known = catalogues.tags.some(function (t) { return t.id === tag.id; });
+        body.appendChild(el('div.repeater-item', {}, [
+          el('div.repeater-head', {}, [
+            el('span.repeater-index', {}, [
+              el('code', { text: tag.id }),
+              known ? el('span.pill.pill-ok', { text: 'saved' })
+                    : el('span.pill', { text: 'new' })
+            ]),
+            el('button.icon-btn.icon-btn-danger', {
+              type: 'button', 'aria-label': 'Remove tag',
+              onclick: function () { pet.tags.splice(index, 1); redraw(); }
+            }, el('i.fa-solid.fa-trash', { 'aria-hidden': 'true' }))
+          ]),
+          localisedField('Label', tag)
+        ]));
+      });
+    }
+
+    redraw();
+
+    return el('section.admin-block', {}, [
+      el('div.admin-block-head', {}, [
+        el('h3', { text: 'Tags' }),
+        el('div.input-with-button', {}, [
+          input,
+          datalist,
+          el('button.button.button-ghost.button-sm', {
+            type: 'button',
+            onclick: function () { add(input.value); }
+          }, [el('i.fa-solid.fa-plus', { 'aria-hidden': 'true' }), ' Add'])
+        ])
+      ]),
+      body
+    ]);
+  }
+
+  function curatorPicker(pet) {
+    var fields = el('div');
+
+    function drawFields() {
+      UI.clear(fields);
+      var c = pet.curator;
+      var known = catalogues.curators.some(function (r) { return r.slug === c.slug; });
+
+      fields.appendChild(el('p.field-hint', {
+        text: known
+          ? 'Editing a saved curator: changes apply to every animal they look after.'
+          : 'New curator — saving this animal adds them to the list for next time.'
+      }));
+
+      var slugInput = el('input', { type: 'text', placeholder: 'mykhailo' });
+      slugInput.value = c.slug || '';
+      slugInput.addEventListener('input', function () { c.slug = slugInput.value.trim(); });
+
+      fields.appendChild(el('div.field', {}, [
+        el('label.field-label', { text: 'Curator id' }),
+        el('p.field-hint', { text: 'Short latin key. Generated from the name if left empty.' }),
+        slugInput
+      ]));
+
+      fields.appendChild(localisedField('Name', c.name, {
+        onChange: function () {
+          if (!c.slug) {
+            slugInput.value = window.PetSlug.slugify(i18n.pick(c.name, i18n.FALLBACK) || i18n.pick(c.name));
+            c.slug = slugInput.value;
+          }
+        }
+      }));
+      fields.appendChild(uploadField('Photo', c, 'photo'));
+      fields.appendChild(localisedField('Photo alt text', c.photoAlt));
+      fields.appendChild(localisedField('Bio', c.bio, { multiline: true, rows: 4 }));
+      fields.appendChild(textField('Email', c, 'email', { type: 'email' }));
+      fields.appendChild(textField('Telegram URL', c, 'telegram', { placeholder: 'https://t.me/…' }));
+      fields.appendChild(textField('Instagram URL', c, 'instagram', { placeholder: 'https://instagram.com/…' }));
+      fields.appendChild(textField('Phone', c, 'phone', { type: 'tel' }));
+    }
+
+    drawFields();
+
+    var picker = recordSelect('Use an existing curator', catalogues.curators, pet.curator.slug,
+      function (row) {
+        pet.curator = row
+          ? window.PetDB.normaliseCurator(JSON.parse(JSON.stringify(row)))
+          : { slug: '', name: {}, photo: '', photoAlt: {}, bio: {}, email: '', telegram: '', instagram: '', phone: '' };
+        pet.curatorId = row ? (row.id || null) : null;
+        drawFields();
+      });
+
+    return el('section.admin-block', {}, [el('h3', { text: 'Curator' }), picker, fields]);
+  }
+
+  function donationPicker(pet) {
+    var fields = el('div');
+
+    function drawFields() {
+      UI.clear(fields);
+      var d = pet.donate;
+
+      var slugInput = el('input', { type: 'text', placeholder: 'kotik-bog' });
+      slugInput.value = d.slug || '';
+      slugInput.addEventListener('input', function () { d.slug = slugInput.value.trim(); });
+
+      fields.appendChild(el('div.field', {}, [
+        el('label.field-label', { text: 'Link id' }),
+        el('p.field-hint', { text: 'Short latin key, so the same link can be reused.' }),
+        slugInput
+      ]));
+
+      var qrBox = el('div.qr-preview');
+      var urlInput = el('input', { type: 'url', placeholder: 'https://…' });
+      urlInput.value = d.url || '';
+      urlInput.addEventListener('input', function () {
+        d.url = urlInput.value.trim();
+        if (!d.slug) {
+          slugInput.value = window.PetSlug.slugify(d.url.replace(/^https?:\/\//, ''));
+          d.slug = slugInput.value;
+        }
+        drawQr();
+      });
+
+      fields.appendChild(el('div.field', {}, [
+        el('label.field-label', { text: 'Donation link' }),
+        urlInput
+      ]));
+
+      /* Live QR preview of whatever is in the URL box, so a typo is visible
+         before it reaches a flyer. */
+      function drawQr() {
+        if (d.qr) {
+          qrBox.innerHTML = '';
+          qrBox.appendChild(el('img', { src: d.qr, alt: 'Uploaded QR code' }));
+          return;
+        }
+        if (!d.url) { qrBox.innerHTML = ''; return; }
+        window.PetQR.render(qrBox, d.url, { label: 'Donation QR code' });
+      }
+
+      fields.appendChild(el('div.field', {}, [
+        el('label.field-label', { text: 'QR code' }),
+        el('p.field-hint', {
+          text: d.qr
+            ? 'Using the uploaded image. Clear the field below to go back to the generated one.'
+            : 'Generated from the link above, so it can never point somewhere the link does not. Upload an image only to use the bank’s own code.'
+        }),
+        el('div.qr-row', {}, [
+          qrBox,
+          el('div.qr-actions', {}, [
+            el('button.button.button-ghost.button-sm', {
+              type: 'button',
+              onclick: function () { downloadQr(d.url, pet.slug); }
+            }, [el('i.fa-solid.fa-download', { 'aria-hidden': 'true' }), ' Download SVG'])
+          ])
+        ])
+      ]));
+
+      var upload = uploadField('Or upload a QR image', d, 'qr',
+        'Overrides the generated code.');
+      upload.querySelector('input[type="text"]').addEventListener('input', drawQr);
+      fields.appendChild(upload);
+
+      fields.appendChild(localisedField('Button label', d.label));
+      fields.appendChild(localisedField('Note above the button', d.note, { multiline: true, rows: 3 }));
+
+      drawQr();
+    }
+
+    drawFields();
+
+    var picker = recordSelect('Use an existing link', catalogues.donations, pet.donate.slug,
+      function (row) {
+        pet.donate = row
+          ? window.PetDB.normaliseDonation(JSON.parse(JSON.stringify(row)))
+          : { slug: '', url: '', qr: '', label: {}, note: {} };
+        pet.donationId = row ? (row.id || null) : null;
+        drawFields();
+      });
+
+    return el('section.admin-block', {}, [el('h3', { text: 'Donation' }), picker, fields]);
+  }
+
+  function downloadQr(url, name) {
+    if (!url) { status('Add a donation link first.', 'info'); return; }
+    window.PetQR.svgMarkup(url).then(function (svg) {
+      var blob = new Blob([svg], { type: 'image/svg+xml' });
+      var link = el('a', { href: window.URL.createObjectURL(blob), download: (name || 'donation') + '-qr.svg' });
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(link.href);
+    }).catch(function (err) { status('Could not generate the QR: ' + describeError(err), 'error'); });
+  }
+
   /* --------------------------------------------------------------- media */
 
   /*
@@ -282,12 +591,43 @@
     ]));
 
     /* --- identity --- */
+    var slugInput = el('input', { type: 'text', placeholder: 'kotik' });
+    slugInput.value = pet.slug || '';
+    slugInput.addEventListener('input', function () {
+      slugTouched = true;               // hand-edited: stop generating
+      pet.slug = slugInput.value.trim();
+      updateSlugPreview();
+    });
+
+    var slugPreview = el('p.field-hint.slug-preview');
+    function updateSlugPreview() {
+      slugPreview.textContent = pet.slug ? 'pet.html?slug=' + pet.slug : '';
+    }
+    updateSlugPreview();
+
+    var slugField = el('div.field', {}, [
+      el('label.field-label', { text: 'Slug (URL)' }),
+      el('p.field-hint', {
+        text: 'Filled in automatically from the name. Latin letters, digits and dashes only.'
+      }),
+      el('div.input-with-button', {}, [
+        slugInput,
+        el('button.button.button-ghost.button-sm', {
+          type: 'button',
+          title: 'Regenerate from the name',
+          onclick: function () {
+            slugTouched = false;
+            refreshAutoSlug(slugInput);
+            updateSlugPreview();
+          }
+        }, [el('i.fa-solid.fa-arrows-rotate', { 'aria-hidden': 'true' }), ' Auto'])
+      ]),
+      slugPreview
+    ]);
+
     host.appendChild(el('section.admin-block', {}, [
       el('h3', { text: 'Basics' }),
-      textField('Slug (URL)', pet, 'slug', {
-        hint: 'Latin letters, digits and dashes. The page will be pet.html?slug=…',
-        placeholder: 'kotik'
-      }),
+      slugField,
       el('div.field-row', {}, [
         checkboxField(i18n.t('adminPublished'), pet, 'published'),
         (function () {
@@ -298,7 +638,9 @@
           return f;
         })()
       ]),
-      localisedField('Name', pet.name),
+      localisedField('Name', pet.name, {
+        onChange: function () { refreshAutoSlug(slugInput); updateSlugPreview(); }
+      }),
       localisedField('Subtitle', pet.subtitle),
       localisedField('Location', pet.location),
       localisedField('Status label', pet.status),
@@ -368,19 +710,7 @@
     ]));
 
     /* --- tags --- */
-    host.appendChild(repeater('Tags', pet.tags,
-      function () { return { id: '', ru: '', en: '', ka: '' }; },
-      function (item) {
-        return el('div', {}, [
-          textField('Tag id', item, 'id', {
-            hint: 'Stable key used for filtering, e.g. "fiv". Never translated.',
-            placeholder: 'fiv'
-          }),
-          localisedField('Label', item)
-        ]);
-      },
-      { emptyText: 'No tags. Tags power the search filters on the main page.' }
-    ));
+    host.appendChild(tagPicker(pet));
 
     /* --- care plan --- */
     host.appendChild(repeater('Medical status & plan', pet.carePlan,
@@ -412,26 +742,10 @@
     ));
 
     /* --- donation --- */
-    host.appendChild(el('section.admin-block', {}, [
-      el('h3', { text: 'Donation' }),
-      textField('Donation link', pet.donate, 'url', { placeholder: 'https://…' }),
-      uploadField('QR code image', pet.donate, 'qr'),
-      localisedField('Button label', pet.donate.label),
-      localisedField('Note above the button', pet.donate.note, { multiline: true, rows: 3 })
-    ]));
+    host.appendChild(donationPicker(pet));
 
     /* --- curator --- */
-    host.appendChild(el('section.admin-block', {}, [
-      el('h3', { text: 'Curator' }),
-      localisedField('Name', pet.curator.name),
-      uploadField('Photo', pet.curator, 'photo'),
-      localisedField('Photo alt text', pet.curator.photoAlt),
-      localisedField('Bio', pet.curator.bio, { multiline: true, rows: 4 }),
-      textField('Email', pet.curator, 'email', { type: 'email' }),
-      textField('Telegram URL', pet.curator, 'telegram', { placeholder: 'https://t.me/…' }),
-      textField('Instagram URL', pet.curator, 'instagram', { placeholder: 'https://instagram.com/…' }),
-      textField('Phone', pet.curator, 'phone', { type: 'tel' })
-    ]));
+    host.appendChild(curatorPicker(pet));
 
     /* --- free-form sections --- */
     host.appendChild(repeater('Extra sections', pet.sections,
@@ -456,6 +770,9 @@
        leave half-typed changes in the list behind. */
     draft = JSON.parse(JSON.stringify(pet));
     isNew = !!creating;
+    /* An existing record's slug is its primary key and its public URL, so it
+       counts as deliberate: never regenerate it from under the curator. */
+    slugTouched = !creating;
     buildEditor();
   }
 
@@ -487,8 +804,41 @@
     payload.tags = payload.tags.filter(function (t) { return t.id; });
     payload.docs = payload.docs.filter(function (d) { return d.href; });
 
+    var curator = payload.curator || {};
+    var donation = payload.donate || {};
+    var hasCurator = !!(curator.slug && (i18n.pick(curator.name) || curator.email || curator.telegram));
+    var hasDonation = !!(donation.slug && donation.url);
+
+    if (curator.slug && !window.PetSlug.isValid(curator.slug)) {
+      status('Curator id must be lowercase latin letters, digits and dashes.', 'error');
+      return;
+    }
+    if (donation.slug && !window.PetSlug.isValid(donation.slug)) {
+      status('Link id must be lowercase latin letters, digits and dashes.', 'error');
+      return;
+    }
+
     status('Saving…', 'info');
+
+    /*
+     * Order matters: the shared records must exist before the pet can point a
+     * foreign key at them. Each upsert returns the stored row, which is where
+     * the id for that foreign key comes from.
+     */
     window.PetAuth.ensureFresh()
+      .then(function () { return payload.tags.length ? window.PetDB.saveTags(payload.tags) : null; })
+      .then(function () {
+        if (!hasCurator) return null;
+        return window.PetDB.saveCurator(curator).then(function (rows) {
+          if (rows && rows[0] && rows[0].id) payload.curatorId = rows[0].id;
+        });
+      })
+      .then(function () {
+        if (!hasDonation) return null;
+        return window.PetDB.saveDonation(donation).then(function (rows) {
+          if (rows && rows[0] && rows[0].id) payload.donationId = rows[0].id;
+        });
+      })
       .then(function () { return window.PetDB.savePet(payload); })
       .then(function () {
         status(i18n.t('adminSaved'), 'ok');
@@ -562,6 +912,7 @@
   function reload() {
     return window.PetDB.listPets({ includeDrafts: true }).then(function (result) {
       pets = result.pets;
+      catalogues = result.catalogues || { tags: [], curators: [], donations: [] };
       renderList();
       if (result.stale) {
         status('Read from the local seed — could not reach Supabase. Saving will fail until it is reachable.', 'error');
@@ -572,12 +923,46 @@
   /* Exports the current records in data/pets.js format, so the static fallback
      can be kept in step with the database and committed to the repo. */
   function exportSeed() {
-    var body = 'window.PETS_SEED = ' +
-      JSON.stringify(pets.map(function (p) {
-        var copy = JSON.parse(JSON.stringify(p));
-        delete copy.mainPhoto;                 // rebuilt from gallery[0] on load
-        return copy;
-      }), null, 2) + ';\n';
+    /* Mirrors data/pets.js: the catalogues first, then pets referencing them
+       by slug, so the offline fallback keeps the same shared-record structure
+       as the database rather than flattening copies back into every animal. */
+    var tags = catalogues.tags.map(function (t) {
+      var out = { id: t.id };
+      var label = t.label || t;
+      Object.keys(label).forEach(function (k) { if (k !== 'id' && label[k]) out[k] = label[k]; });
+      return out;
+    });
+
+    var curators = catalogues.curators.map(function (c) {
+      var n = window.PetDB.normaliseCurator(c);
+      n.slug = c.slug;
+      return n;
+    });
+
+    var donations = catalogues.donations.map(function (d) {
+      var n = window.PetDB.normaliseDonation(d);
+      n.slug = d.slug;
+      return n;
+    });
+
+    var records = pets.map(function (p) {
+      var copy = JSON.parse(JSON.stringify(p));
+      delete copy.mainPhoto;                 // rebuilt from gallery[0] on load
+      delete copy.curatorId;
+      delete copy.donationId;
+      copy.tags = (copy.tags || []).map(function (t) { return t.id; });
+      if (copy.curator && copy.curator.slug) copy.curatorSlug = copy.curator.slug;
+      if (copy.donate && copy.donate.slug) copy.donationSlug = copy.donate.slug;
+      delete copy.curator;
+      delete copy.donate;
+      return copy;
+    });
+
+    var body = '/* Exported from the admin. Replaces data/pets.js. */\n\n' +
+      'window.TAGS_SEED = ' + JSON.stringify(tags, null, 2) + ';\n\n' +
+      'window.CURATORS_SEED = ' + JSON.stringify(curators, null, 2) + ';\n\n' +
+      'window.DONATIONS_SEED = ' + JSON.stringify(donations, null, 2) + ';\n\n' +
+      'window.PETS_SEED = ' + JSON.stringify(records, null, 2) + ';\n';
 
     var blob = new Blob([body], { type: 'text/javascript' });
     var link = el('a', { href: window.URL.createObjectURL(blob), download: 'pets.js' });

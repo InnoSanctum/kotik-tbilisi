@@ -71,6 +71,67 @@ create index if not exists pets_published_sort_idx
 create index if not exists pets_tag_ids_idx
   on public.pets using gin (tag_ids);
 
+-- ------------------------------------------------- shared, reusable records
+--
+-- Curators, tags and donation links are their own tables rather than fields
+-- copied into every pet. One curator looks after several animals; retyping the
+-- same Telegram handle six times is how five of them end up subtly wrong, and
+-- correcting it later would mean editing every record. Same reasoning for a
+-- donation link and for tags: a tag only groups animals if everyone spells it
+-- identically, which is what a shared table guarantees.
+--
+-- They are also what the admin offers as suggestions.
+
+create table if not exists public.curators (
+  id         uuid primary key default gen_random_uuid(),
+  slug       text not null unique
+             check (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'),
+  name       jsonb not null default '{}'::jsonb,   -- {"ru": "...", "en": "..."}
+  bio        jsonb not null default '{}'::jsonb,
+  photo      text,
+  photo_alt  jsonb not null default '{}'::jsonb,
+  email      text,
+  telegram   text,
+  instagram  text,
+  phone      text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- Tag ids are the primary key: they are the stable, never-translated handle
+-- ('fiv') that filtering and ?tag= links use, while `label` holds what the
+-- visitor actually reads in each language.
+create table if not exists public.tags (
+  id         text primary key
+             check (id ~ '^[a-z0-9]+(-[a-z0-9]+)*$'),
+  label      jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.donation_links (
+  id         uuid primary key default gen_random_uuid(),
+  slug       text not null unique
+             check (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'),
+  url        text not null,
+  label      jsonb not null default '{}'::jsonb,
+  note       jsonb not null default '{}'::jsonb,
+  -- Optional. Left empty, the site draws a QR from `url` in the browser, so
+  -- the code can never point somewhere the link no longer does. Fill it in
+  -- only to use an image the bank produced.
+  qr         text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- on delete set null, not cascade: removing a curator must never silently
+-- delete the animals they looked after.
+alter table public.pets
+  add column if not exists curator_id  uuid references public.curators(id)      on delete set null,
+  add column if not exists donation_id uuid references public.donation_links(id) on delete set null;
+
+create index if not exists pets_curator_idx  on public.pets (curator_id);
+create index if not exists pets_donation_idx on public.pets (donation_id);
+
 -- Who is allowed to edit. Deliberately a table rather than a role check: the
 -- brief is one admin, but adding a second later is then a single INSERT.
 create table if not exists public.admins (
@@ -109,6 +170,16 @@ $$;
 drop trigger if exists pets_touch_updated_at on public.pets;
 create trigger pets_touch_updated_at
   before update on public.pets
+  for each row execute function public.touch_updated_at();
+
+drop trigger if exists curators_touch_updated_at on public.curators;
+create trigger curators_touch_updated_at
+  before update on public.curators
+  for each row execute function public.touch_updated_at();
+
+drop trigger if exists donation_links_touch_updated_at on public.donation_links;
+create trigger donation_links_touch_updated_at
+  before update on public.donation_links
   for each row execute function public.touch_updated_at();
 
 -- ------------------------------------------------------------- ip helpers
@@ -244,6 +315,29 @@ create policy "admins delete pets"
   for delete
   to authenticated
   using (public.is_admin());
+
+-- Curators, tags and donation links are readable by everyone: a pet page has
+-- to show who to contact and where to send money, and the request comes from a
+-- logged-out visitor's browser. None of these tables holds anything that is
+-- not already printed on the page itself.
+do $$
+declare
+  t text;
+begin
+  foreach t in array array['curators', 'tags', 'donation_links'] loop
+    execute format('alter table public.%I enable row level security', t);
+
+    execute format('drop policy if exists "public reads %1$s" on public.%1$I', t);
+    execute format(
+      'create policy "public reads %1$s" on public.%1$I for select to anon, authenticated using (true)', t);
+
+    execute format('drop policy if exists "admins write %1$s" on public.%1$I', t);
+    execute format(
+      'create policy "admins write %1$s" on public.%1$I for all to authenticated '
+      'using (public.is_admin()) with check (public.is_admin())', t);
+  end loop;
+end
+$$;
 
 -- The admin roster and the allowlist are never client-editable. Managing them
 -- from the SQL editor is a feature: a compromised browser session cannot add a

@@ -65,8 +65,10 @@ def load_pets():
         "const vm=require('node:vm'),fs=require('node:fs');"
         "const s={window:{}};"
         "vm.runInNewContext(fs.readFileSync(process.argv[1],'utf8'),s);"
-        "process.stdout.write(JSON.stringify("
-        "{pets:s.window.PETS_SEED,content:s.window.SITE_CONTENT}));"
+        "process.stdout.write(JSON.stringify({"
+        "pets:s.window.PETS_SEED,content:s.window.SITE_CONTENT,"
+        "tags:s.window.TAGS_SEED,curators:s.window.CURATORS_SEED,"
+        "donations:s.window.DONATIONS_SEED}));"
     )
     try:
         # encoding is explicit: the records are Russian and Georgian, and on a
@@ -88,8 +90,7 @@ def load_pets():
         fail(f"data/pets.js does not parse:\n     {head}")
         return None, None
 
-    data = json.loads(out.stdout)
-    return data.get("pets"), data.get("content")
+    return json.loads(out.stdout), True
 
 
 # ------------------------------------------------------------- validation
@@ -125,7 +126,62 @@ def scan_placeholders(blob: str, where: str) -> None:
             fail(f"{where}: contains {description} ({needle!r})")
 
 
-def check_pet(pet, index: int) -> None:
+def check_catalogues(tags, curators, donations) -> None:
+    """The shared records pets point at."""
+    seen_ids = set()
+    for i, tag in enumerate(tags):
+        where = f"TAGS_SEED #{i + 1}"
+        tag_id = tag.get("id")
+        if not tag_id:
+            fail(f"{where}: no id")
+            continue
+        if not re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*", tag_id):
+            fail(f"{where}: id {tag_id!r} must be lowercase latin, digits and single dashes "
+                 f"(Postgres rejects anything else)")
+        if tag_id in seen_ids:
+            fail(f"{where}: duplicate tag id {tag_id!r}")
+        seen_ids.add(tag_id)
+        check_localised(tag, "label", f"{where} ({tag_id})", required=False)
+        if not any(tag.get(lang) for lang in LANGS):
+            fail(f"{where} ({tag_id}): no label in any language — it would render as its id")
+
+    seen_slugs = set()
+    for i, curator in enumerate(curators):
+        where = f"CURATORS_SEED #{i + 1}"
+        slug = curator.get("slug")
+        if not slug:
+            fail(f"{where}: no slug")
+        elif slug in seen_slugs:
+            fail(f"{where}: duplicate curator slug {slug!r}")
+        else:
+            seen_slugs.add(slug)
+        check_localised(curator.get("name"), "name", where)
+        check_file(curator.get("photo"), f"{where} photo")
+        if not any(curator.get(k) for k in ("email", "telegram", "instagram", "phone")):
+            note(f"{where} ({slug}): no contact details")
+
+    seen_slugs = set()
+    for i, donation in enumerate(donations):
+        where = f"DONATIONS_SEED #{i + 1}"
+        slug = donation.get("slug")
+        if not slug:
+            fail(f"{where}: no slug")
+        elif slug in seen_slugs:
+            fail(f"{where}: duplicate link slug {slug!r}")
+        else:
+            seen_slugs.add(slug)
+        url = donation.get("url", "")
+        if not url:
+            fail(f"{where}: no url")
+        elif not url.startswith("https://"):
+            fail(f"{where}: donation link is not https — {url}")
+        check_file(donation.get("qr"), f"{where} QR")
+        if not donation.get("qr"):
+            note(f"{where} ({slug}): no QR image — one is generated from the link in the browser")
+
+
+def check_pet(pet, index: int, catalogues) -> None:
+    tags_by_id, curators_by_slug, donations_by_slug = catalogues
     slug = pet.get("slug", "")
     where = f"pet #{index + 1} ({slug or 'no slug'})"
 
@@ -142,10 +198,18 @@ def check_pet(pet, index: int) -> None:
         check_localised(pet.get(field), field, where, required=False)
 
     # --- tags
+    # A pet may list an id ('fiv'), a label, or a full object. Ids that the
+    # catalogue does not know would silently render as the raw id.
     tags = pet.get("tags") or []
     seen_tags = set()
     for i, tag in enumerate(tags):
         if isinstance(tag, str):
+            looks_like_id = bool(re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*", tag))
+            if looks_like_id and tag not in tags_by_id:
+                fail(f"{where}: tag {tag!r} is not in TAGS_SEED — it would render as its bare id")
+            if tag in seen_tags:
+                fail(f"{where}: tag {tag!r} listed twice")
+            seen_tags.add(tag)
             continue
         tag_id = tag.get("id")
         if not tag_id:
@@ -155,6 +219,17 @@ def check_pet(pet, index: int) -> None:
         else:
             seen_tags.add(tag_id)
         check_localised(tag, "tag label", f"{where} tag {tag_id or i + 1}", required=False)
+
+    # --- shared record references
+    curator_ref = pet.get("curatorSlug")
+    if curator_ref and curator_ref not in curators_by_slug:
+        fail(f"{where}: curatorSlug {curator_ref!r} is not in CURATORS_SEED — "
+             f"the contacts block would render empty")
+
+    donation_ref = pet.get("donationSlug")
+    if donation_ref and donation_ref not in donations_by_slug:
+        fail(f"{where}: donationSlug {donation_ref!r} is not in DONATIONS_SEED — "
+             f"the donate button would render empty")
 
     # --- media
     main = pet.get("mainPhoto")
@@ -187,13 +262,14 @@ def check_pet(pet, index: int) -> None:
             fail(f"{where}: video block has no YouTube id — set video to null to hide the section")
         check_file(video.get("thumb"), f"{where} video poster")
 
-    # --- donation
-    donate = pet.get("donate") or {}
+    # --- donation (either referenced or stored inline on an older record)
+    donate = pet.get("donate") or donations_by_slug.get(donation_ref) or {}
     if not donate.get("url") and not donate.get("qr"):
         note(f"{where}: no donation link or QR code")
-    check_file(donate.get("qr"), f"{where} donate QR")
-    if donate.get("url") and not donate["url"].startswith("https://"):
-        fail(f"{where}: donation link is not https — {donate['url']}")
+    if pet.get("donate"):
+        check_file(donate.get("qr"), f"{where} donate QR")
+        if donate.get("url") and not donate["url"].startswith("https://"):
+            fail(f"{where}: donation link is not https — {donate['url']}")
 
     # --- documents
     for i, doc in enumerate(pet.get("docs") or []):
@@ -203,10 +279,13 @@ def check_pet(pet, index: int) -> None:
         check_file(doc.get("href"), spot)
         check_localised(doc.get("label"), "label", spot, required=False)
 
-    # --- curator
-    curator = pet.get("curator") or {}
-    check_file(curator.get("photo"), f"{where} curator photo")
-    if not any(curator.get(k) for k in ("email", "telegram", "instagram", "phone")):
+    # --- curator (either referenced or stored inline on an older record)
+    curator = pet.get("curator") or curators_by_slug.get(curator_ref) or {}
+    if pet.get("curator"):
+        check_file(curator.get("photo"), f"{where} curator photo")
+    if not curator:
+        note(f"{where}: no curator")
+    elif not any(curator.get(k) for k in ("email", "telegram", "instagram", "phone")):
         note(f"{where}: curator has no contact details")
 
     for i, step in enumerate(pet.get("carePlan") or []):
@@ -321,22 +400,37 @@ def check_config() -> None:
 # ------------------------------------------------------------------- main
 
 def main() -> int:
-    pets, content = load_pets()
+    data, ok = load_pets()
 
-    if pets is None:
+    if data is None:
         report()
         return 1
+
+    pets = data.get("pets")
+    content = data.get("content")
+    tags = data.get("tags") or []
+    curators = data.get("curators") or []
+    donations = data.get("donations") or []
 
     if not isinstance(pets, list) or not pets:
         fail("data/pets.js defines no pets")
         report()
         return 1
 
-    print(f"data/pets.js: {len(pets)} pet(s)")
+    print(f"data/pets.js: {len(pets)} pet(s), {len(tags)} tag(s), "
+          f"{len(curators)} curator(s), {len(donations)} donation link(s)")
+
+    check_catalogues(tags, curators, donations)
+
+    catalogues = (
+        {t.get("id") for t in tags},
+        {c.get("slug"): c for c in curators},
+        {d.get("slug"): d for d in donations},
+    )
 
     slugs: dict[str, int] = {}
     for i, pet in enumerate(pets):
-        check_pet(pet, i)
+        check_pet(pet, i, catalogues)
         slug = pet.get("slug")
         if slug:
             if slug in slugs:

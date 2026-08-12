@@ -34,7 +34,9 @@ function boot(opts = {}) {
     s.textContent = readFileSync(join(ROOT, f), 'utf8');
     d.head.appendChild(s);
     if (f === 'config.js') {
-      if (opts.supabase) w.SITE_CONFIG.supabase = opts.supabase;
+      /* Default to "no project configured" so the seed path is exercised
+         deterministically, whatever config.js happens to contain. */
+      w.SITE_CONFIG.supabase = opts.supabase || { url: '', anonKey: '' };
       if (opts.fetchImpl) w.fetch = opts.fetchImpl;
     }
     if (f === 'data/pets.js' && opts.extraSeed) w.PETS_SEED.push(...opts.extraSeed);

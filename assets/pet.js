@@ -87,15 +87,32 @@
       ]));
     }
 
+    /* A QR image the curator uploaded wins: a bank's own code can encode more
+       than a bare URL. Otherwise one is drawn from the donation link, so the
+       code can never point somewhere the link no longer does. */
+    var label = i18n.pick(pet.donate.label, lang) || i18n.t('donateButton');
+
     if (pet.donate.qr) {
       host.appendChild(el('div.qr-wrapper', {}, [
         el('div.qr-code', {}, el('img', {
-          src: pet.donate.qr,
-          alt: i18n.pick(pet.donate.label, lang) || i18n.t('donateButton'),
-          loading: 'lazy'
+          src: pet.donate.qr, alt: label, loading: 'lazy'
         })),
         el('div.qr-caption', { text: i18n.t('qrCaption') })
       ]));
+    } else if (pet.donate.url && window.PetQR) {
+      var box = el('div.qr-code');
+      host.appendChild(el('div.qr-wrapper', {}, [
+        box,
+        el('div.qr-caption', { text: i18n.t('qrCaption') })
+      ]));
+      window.PetQR.render(box, pet.donate.url, { label: label }).then(function (svg) {
+        /* Generation is the only thing that can fail here; if it does, drop
+           the empty frame rather than leaving a blank box under the button. */
+        if (!svg) {
+          var wrapper = box.parentNode;
+          if (wrapper && wrapper.parentNode) wrapper.parentNode.removeChild(wrapper);
+        }
+      });
     }
   }
 

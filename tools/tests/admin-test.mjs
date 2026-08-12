@@ -33,8 +33,41 @@ function makeBackend({ signInOk = true } = {}) {
     doc: { name: { ru: 'Черновичок' }, gallery: [], donate: {}, curator: {} },
   }];
 
+  const tags = [
+    { id: 'cat', label: { ru: 'Кот', en: 'Cat' } },
+    { id: 'fiv', label: { ru: 'ВИК (FIV) +', en: 'FIV positive +' } },
+    { id: 'needs-home', label: { ru: 'Ищет дом', en: 'Needs a home' } },
+  ];
+  const curators = [{
+    id: 'cur-1', slug: 'mykhailo',
+    name: { ru: 'Михаил', en: 'Mykhailo' },
+    bio: { ru: 'Био' }, email: 'innosanctum@gmail.com',
+    telegram: 'https://t.me/innosanctum', instagram: null, phone: null, photo: null,
+    photo_alt: {},
+  }];
+  const donations = [{
+    id: 'don-1', slug: 'kotik-bog',
+    url: 'https://egreve.bog.ge/For_Kotik',
+    label: { ru: 'Перевести' }, note: {}, qr: 'assets/qr_code.png',
+  }];
+
   const fetchImpl = async (url, opts = {}) => {
     calls.push({ url, method: opts.method || 'GET', headers: opts.headers, body: opts.body });
+
+    const method = opts.method || 'GET';
+    for (const [path, rowset] of [['tags', tags], ['curators', curators], ['donation_links', donations]]) {
+      if (url.includes('/rest/v1/' + path)) {
+        if (method === 'GET') return { ok: true, status: 200, json: async () => rowset };
+        /* Upserts echo the row back with an id, the way PostgREST does with
+           Prefer: return=representation — that id becomes the pet's FK. */
+        const sent = JSON.parse(opts.body);
+        const list = Array.isArray(sent) ? sent : [sent];
+        return {
+          ok: true, status: 201,
+          json: async () => list.map((r, i) => Object.assign({ id: path + '-new-' + i }, r)),
+        };
+      }
+    }
 
     if (url.includes('/auth/v1/token')) {
       if (!signInOk) {
@@ -74,6 +107,14 @@ function boot(backend) {
       w.fetch = backend.fetchImpl;
     }
   }
+  /* jsdom will not fetch the lazily-injected QR vendor script, so preload it
+     to exercise the donation preview. */
+  /* jsdom has no layout, so scrollTo is unimplemented and logs a stack trace
+     on every editor open. The editor only uses it cosmetically. */
+  w.scrollTo = () => {};
+  const vendor = d.createElement('script');
+  vendor.textContent = readFileSync(join(ROOT, 'assets/vendor/qrcode.js'), 'utf8');
+  d.head.appendChild(vendor);
   d.dispatchEvent(new w.Event('DOMContentLoaded', { bubbles: true }));
   return { w, d };
 }
@@ -261,6 +302,240 @@ console.log('\nAdmin: delete');
   check('confirming issues a DELETE', !!del);
   check('deletes by slug', del.url.includes('slug=eq.kotik'), del.url);
   check('authorised with the JWT', del.headers.Authorization === 'Bearer jwt-access');
+}
+
+/* ------------------------------------------------ suggestions & slugs --- */
+async function signedInAdmin() {
+  const backend = makeBackend();
+  const { w, d } = boot(backend);
+  await settle();
+  d.getElementById('admin-email').value = 'a@b.c';
+  d.getElementById('admin-password').value = 'x';
+  d.getElementById('sign-in-form').dispatchEvent(new w.Event('submit', { bubbles: true, cancelable: true }));
+  await settle(250);
+  return { w, d, backend };
+}
+
+const clickButton = (d, w, text) =>
+  [...d.querySelectorAll('button')].find((b) => b.textContent.trim() === text)
+    .dispatchEvent(new w.Event('click', { bubbles: true }));
+
+/* The editor has an "Add" button per repeater (gallery, care plan, docs...),
+   so the tag one has to be reached through the tag input, not by label. */
+const addTag = (d, w, value) => {
+  const input = d.querySelector('input[list="tag-suggestions"]');
+  input.value = value;
+  input.parentNode.querySelector('button').dispatchEvent(new w.Event('click', { bubbles: true }));
+};
+
+console.log('\nAdmin: catalogues are fetched');
+{
+  const { backend } = await signedInAdmin();
+  const got = (p) => backend.calls.some((c) => c.url.includes('/rest/v1/' + p) && c.method === 'GET');
+  check('fetches tags', got('tags'));
+  check('fetches curators', got('curators'));
+  check('fetches donation links', got('donation_links'));
+}
+
+console.log('\nAdmin: slug generated from the name');
+{
+  const { w, d } = await signedInAdmin();
+  d.getElementById('new-pet').dispatchEvent(new w.Event('click', { bubbles: true }));
+  await settle();
+
+  const slugInput = [...d.querySelectorAll('input')].find((i) => i.placeholder === 'kotik');
+  check('slug starts empty', slugInput.value === '');
+
+  const nameRu = [...d.querySelectorAll('.lang-row input[data-lang="ru"]')][0];
+  nameRu.value = 'Барсик';
+  nameRu.dispatchEvent(new w.Event('input', { bubbles: true }));
+  check('typing a Russian name fills a latin slug', slugInput.value === 'barsik', slugInput.value);
+
+  nameRu.value = 'Котик';
+  nameRu.dispatchEvent(new w.Event('input', { bubbles: true }));
+  check('an existing slug is avoided', slugInput.value === 'kotik-2', slugInput.value);
+
+  /* Once edited by hand the slug is the curator's, not ours. */
+  slugInput.value = 'my-own-slug';
+  slugInput.dispatchEvent(new w.Event('input', { bubbles: true }));
+  nameRu.value = 'Рыжик';
+  nameRu.dispatchEvent(new w.Event('input', { bubbles: true }));
+  check('a hand-typed slug is not overwritten', slugInput.value === 'my-own-slug', slugInput.value);
+
+  clickButton(d, w, 'Auto');
+  check('"Auto" resumes generation', slugInput.value === 'ryzhik', slugInput.value);
+}
+
+console.log('\nAdmin: editing an existing pet keeps its slug');
+{
+  const { w, d } = await signedInAdmin();
+  [...d.querySelectorAll('.admin-entry button')].find((b) => b.textContent === 'Edit')
+    .dispatchEvent(new w.Event('click', { bubbles: true }));
+  await settle();
+  const slugInput = [...d.querySelectorAll('input')].find((i) => i.placeholder === 'kotik');
+  const nameRu = [...d.querySelectorAll('.lang-row input[data-lang="ru"]')].find((i) => i.value === 'Котик');
+  nameRu.value = 'Котик Переименованный';
+  nameRu.dispatchEvent(new w.Event('input', { bubbles: true }));
+  check('published URL is never silently changed', slugInput.value === 'kotik', slugInput.value);
+}
+
+console.log('\nAdmin: tag suggestions');
+{
+  const { w, d } = await signedInAdmin();
+  d.getElementById('new-pet').dispatchEvent(new w.Event('click', { bubbles: true }));
+  await settle();
+
+  const datalist = d.getElementById('tag-suggestions');
+  check('a datalist of known tags exists', !!datalist);
+  check('every catalogue tag is offered', datalist.querySelectorAll('option').length === 3,
+    `${datalist.querySelectorAll('option').length}`);
+  check('options show the readable label (page is in EN)',
+    [...datalist.querySelectorAll('option')].some((o) => o.value === 'FIV positive +'),
+    [...datalist.querySelectorAll('option')].map((o) => o.value).join(' | '));
+
+  /* Adding by label should pull in the full catalogue entry, translations and
+     all — that is the whole point of suggesting. */
+  addTag(d, w, 'ВИК (FIV) +');
+  await settle();
+  let ids = [...d.querySelectorAll('.repeater-index code')].map((c) => c.textContent);
+  check('adding by label resolves to the catalogue id', ids.includes('fiv'), JSON.stringify(ids));
+  check('marked as already saved',
+    d.querySelector('.repeater-item .pill-ok') !== null);
+  const enLabel = [...d.querySelectorAll('.lang-row input[data-lang="en"]')]
+    .find((i) => i.value === 'FIV positive +');
+  check('English label came along', !!enLabel);
+
+  /* Adding by id should work too. */
+  addTag(d, w, 'cat');
+  await settle();
+  ids = [...d.querySelectorAll('.repeater-index code')].map((c) => c.textContent);
+  check('adding by id works', ids.includes('cat'), JSON.stringify(ids));
+
+  /* A brand-new tag is accepted and transliterated. */
+  addTag(d, w, 'Пушистый');
+  await settle();
+  ids = [...d.querySelectorAll('.repeater-index code')].map((c) => c.textContent);
+  check('a new tag gets a transliterated id', ids.includes('pushistyy'), JSON.stringify(ids));
+  check('new tag flagged as new',
+    [...d.querySelectorAll('.repeater-item')].some((i) =>
+      i.textContent.includes('pushistyy') && i.querySelector('.pill:not(.pill-ok)')));
+
+  /* Duplicates are refused rather than silently doubling a filter. */
+  addTag(d, w, 'cat');
+  await settle();
+  ids = [...d.querySelectorAll('.repeater-index code')].map((c) => c.textContent);
+  check('duplicate tag refused', ids.filter((i) => i === 'cat').length === 1, JSON.stringify(ids));
+}
+
+console.log('\nAdmin: curator and donation suggestions');
+{
+  const { w, d } = await signedInAdmin();
+  d.getElementById('new-pet').dispatchEvent(new w.Event('click', { bubbles: true }));
+  await settle();
+
+  const selects = [...d.querySelectorAll('select')];
+  const curatorSelect = selects.find((s) =>
+    [...s.options].some((o) => o.textContent.includes('mykhailo')));
+  check('existing curators are offered', !!curatorSelect);
+
+  curatorSelect.value = 'mykhailo';
+  curatorSelect.dispatchEvent(new w.Event('change', { bubbles: true }));
+  await settle();
+  const telegram = [...d.querySelectorAll('input')].find((i) => i.value === 'https://t.me/innosanctum');
+  check('picking a curator fills their contacts', !!telegram);
+  const curatorId = [...d.querySelectorAll('input')].find((i) => i.placeholder === 'mykhailo');
+  check('curator id filled', curatorId && curatorId.value === 'mykhailo', curatorId && curatorId.value);
+
+  const donationSelect = selects.find((s) =>
+    [...s.options].some((o) => o.textContent.includes('kotik-bog')));
+  check('existing donation links are offered', !!donationSelect);
+
+  donationSelect.value = 'kotik-bog';
+  donationSelect.dispatchEvent(new w.Event('change', { bubbles: true }));
+  await settle();
+  const urlInput = [...d.querySelectorAll('input[type="url"]')][0];
+  check('picking a link fills the URL',
+    urlInput && urlInput.value === 'https://egreve.bog.ge/For_Kotik', urlInput && urlInput.value);
+}
+
+console.log('\nAdmin: QR preview');
+{
+  const { w, d } = await signedInAdmin();
+  d.getElementById('new-pet').dispatchEvent(new w.Event('click', { bubbles: true }));
+  await settle();
+
+  const urlInput = [...d.querySelectorAll('input[type="url"]')][0];
+  urlInput.value = 'https://pay.example/abc';
+  urlInput.dispatchEvent(new w.Event('input', { bubbles: true }));
+  await settle(250);
+
+  const preview = d.querySelector('.qr-preview');
+  check('a QR is drawn from the typed link', !!preview.querySelector('svg'));
+
+  const before = preview.innerHTML;
+  urlInput.value = 'https://pay.example/different';
+  urlInput.dispatchEvent(new w.Event('input', { bubbles: true }));
+  await settle(250);
+  check('changing the link redraws the QR', preview.innerHTML !== before);
+  check('link id auto-derived from the URL',
+    [...d.querySelectorAll('input')].some((i) => i.placeholder === 'kotik-bog' && i.value.length > 0));
+}
+
+console.log('\nAdmin: saving writes the shared records first');
+{
+  const { w, d, backend } = await signedInAdmin();
+  d.getElementById('new-pet').dispatchEvent(new w.Event('click', { bubbles: true }));
+  await settle();
+
+  const nameRu = [...d.querySelectorAll('.lang-row input[data-lang="ru"]')][0];
+  nameRu.value = 'Барсик';
+  nameRu.dispatchEvent(new w.Event('input', { bubbles: true }));
+
+  addTag(d, w, 'Пушистый');
+  await settle();
+
+  const curatorSelect = [...d.querySelectorAll('select')].find((s) =>
+    [...s.options].some((o) => o.textContent.includes('mykhailo')));
+  curatorSelect.value = 'mykhailo';
+  curatorSelect.dispatchEvent(new w.Event('change', { bubbles: true }));
+  await settle();
+
+  const urlInput = [...d.querySelectorAll('input[type="url"]')][0];
+  urlInput.value = 'https://pay.example/barsik';
+  urlInput.dispatchEvent(new w.Event('input', { bubbles: true }));
+  await settle();
+
+  clickButton(d, w, 'Save');
+  await settle(400);
+
+  const posts = backend.calls.filter((c) => c.method === 'POST' && c.url.includes('/rest/v1/'));
+  const order = posts.map((c) => c.url.match(/rest\/v1\/([a-z_]+)/)[1]);
+
+  check('tags saved', order.includes('tags'));
+  check('curator saved', order.includes('curators'));
+  check('donation link saved', order.includes('donation_links'));
+  check('pet saved', order.includes('pets'));
+  check('pet is written last, after its foreign keys exist',
+    order.indexOf('pets') === order.length - 1, JSON.stringify(order));
+
+  const tagPost = JSON.parse(posts.find((c) => c.url.includes('/tags')).body);
+  check('new tag sent with its label',
+    tagPost.some((t) => t.id === 'pushistyy' && t.label.ru === 'Пушистый'), JSON.stringify(tagPost));
+
+  const curatorPost = JSON.parse(posts.find((c) => c.url.includes('/curators')).body);
+  check('curator sent with snake_case photo_alt', 'photo_alt' in curatorPost);
+  check('curator keyed on slug', curatorPost.slug === 'mykhailo');
+
+  const petPost = JSON.parse(posts.find((c) => c.url.includes('/pets')).body);
+  check('pet stores tag ids only',
+    JSON.stringify(petPost.tag_ids) === JSON.stringify(['pushistyy']), JSON.stringify(petPost.tag_ids));
+  check('pet links to the returned curator id',
+    petPost.curator_id === 'curators-new-0', petPost.curator_id);
+  check('pet links to the returned donation id',
+    petPost.donation_id === 'donation_links-new-0', petPost.donation_id);
+  check('pet does not duplicate the curator into doc', petPost.doc.curator === undefined);
+  check('pet does not duplicate the donation into doc', petPost.doc.donate === undefined);
+  check('generated slug used', petPost.slug === 'barsik', petPost.slug);
 }
 
 /* -------------------------------------------------------- middleware --- */

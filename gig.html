@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Title and description are replaced per gig by assets/gig.js. -->
+    <title>Выступление | Помощь животным в Тбилиси</title>
+    <meta name="description" content="Благотворительное выступление в поддержку подопечных проекта: фото, видео и подробности.">
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+    <link rel="alternate icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
+    <meta name="theme-color" content="#4f46e5">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Noto+Sans+Georgian:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+    <a class="skip-link" href="#main">К содержанию</a>
+
+    <header>
+        <div class="nav-container">
+            <a href="index.html" class="logo">
+                <i class="fa-solid fa-paw" aria-hidden="true"></i>
+                <span data-i18n="brandShort">Помощь животным</span>
+            </a>
+            <nav class="site-nav">
+                <a href="index.html#pets" data-i18n="navPets">Питомцы</a>
+                <a href="index.html#gigs" data-i18n="navGigs">Выступления</a>
+                <a href="index.html#about" data-i18n="navAbout">О проекте</a>
+                <a href="index.html#contacts" data-i18n="navContacts">Контакты</a>
+            </nav>
+            <div class="lang-switcher" role="group" aria-label="Language">
+                <button type="button" class="lang-btn" data-lang="ru">RU</button>
+                <button type="button" class="lang-btn" data-lang="en">EN</button>
+                <button type="button" class="lang-btn" data-lang="ka">KA</button>
+            </div>
+        </div>
+    </header>
+
+    <div id="site-banner" hidden></div>
+
+    <main id="main">
+        <a class="back-link" href="index.html#gigs">
+            <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+            <span data-i18n="backToGigs">Ко всем выступлениям</span>
+        </a>
+
+        <!-- Shown only when ?slug= matches nothing. -->
+        <div id="gig-missing" hidden></div>
+
+        <article id="gig-article" hidden>
+            <div class="detail-grid">
+                <div class="detail-media">
+                    <div id="gig-gallery" class="gallery-card" tabindex="0"></div>
+                </div>
+
+                <div class="detail-main">
+                    <div class="info-card">
+                        <div id="gig-badges" class="badge-row"></div>
+                        <h1 id="gig-title"></h1>
+                        <div id="gig-meta" class="gig-meta"></div>
+                        <div id="gig-supports"></div>
+                        <div id="gig-link"></div>
+                    </div>
+
+                    <section id="gig-description" class="detail-section"></section>
+                </div>
+            </div>
+        </article>
+    </main>
+
+    <footer>
+        <p>
+            © <span id="footer-year">2026</span>
+            <span data-i18n="footerRights">Сбор средств для уличных животных, Тбилиси.</span>
+        </p>
+        <p class="footer-sub">
+            <a href="index.html#gigs" data-i18n="backToGigs">Ко всем выступлениям</a>
+        </p>
+    </footer>
+
+    <script src="config.js"></script>
+    <script src="assets/i18n.js"></script>
+    <script src="data/pets.js"></script>
+    <script src="assets/db.js"></script>
+    <script src="assets/ui.js"></script>
+    <script src="assets/gallery.js"></script>
+    <script src="assets/gig.js"></script>
+</body>
+</html>

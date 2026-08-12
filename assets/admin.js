@@ -22,7 +22,9 @@
   var LANGS = i18n.LANGS;
 
   var pets = [];
+  var gigs = [];
   var catalogues = { tags: [], curators: [], donations: [] };
+  var mode = 'pets';       // which tab is showing: 'pets' or 'gigs'
   var draft = null;        // the record currently open in the editor
   var isNew = false;
   var slugTouched = false; // has the curator typed a slug by hand?
@@ -52,9 +54,31 @@
     };
   }
 
-  /* Every slug currently in use, so a generated one can avoid them. */
+  function emptyGig() {
+    return {
+      slug: '',
+      published: false,
+      sortOrder: 0,
+      date: '',
+      petSlugs: [],
+      title: {}, venue: {}, description: {},
+      link: '',
+      mainPhoto: null,
+      gallery: []
+    };
+  }
+
+  /* Every slug currently in use in the active tab, so a generated one can
+     avoid them. Pets and gigs are separate tables, so their slugs are
+     independent — a gig may share a slug with a pet without conflict. */
   function takenSlugs() {
-    return pets.map(function (p) { return p.slug; }).filter(Boolean);
+    var list = mode === 'gigs' ? gigs : pets;
+    return list.map(function (r) { return r.slug; }).filter(Boolean);
+  }
+
+  /* The record's display name, whichever kind it is. */
+  function recordTitle(record) {
+    return i18n.pick(record.name || record.title) || record.slug;
   }
 
   /*
@@ -66,7 +90,8 @@
    */
   function refreshAutoSlug(input) {
     if (slugTouched) return;
-    var source = window.I18N.pick(draft.name, window.I18N.FALLBACK) || window.I18N.pick(draft.name);
+    var field = draft.name || draft.title;
+    var source = window.I18N.pick(field, window.I18N.FALLBACK) || window.I18N.pick(field);
     if (!source) return;
     draft.slug = window.PetSlug.unique(source, takenSlugs(), isNew ? null : draft.slug);
     if (input) input.value = draft.slug;
@@ -777,6 +802,127 @@
     window.scrollTo(0, 0);
   }
 
+  /* ---------------------------------------------------------- gig editor */
+
+  function buildGigEditor() {
+    var host = UI.clear(nodes.editor);
+    var gig = draft;
+
+    host.appendChild(el('div.admin-block-head.editor-head', {}, [
+      el('h2', { text: isNew ? i18n.t('adminNewGig') : (i18n.pick(gig.title) || gig.slug) }),
+      el('div.editor-actions', {}, [
+        el('button.button.button-ghost', { type: 'button', text: i18n.t('adminCancel'), onclick: closeEditor }),
+        el('button.button.button-primary', { type: 'button', text: i18n.t('adminSave'), onclick: save })
+      ])
+    ]));
+
+    var slugInput = el('input', { type: 'text', placeholder: 'vake-park-2026-08-15' });
+    slugInput.value = gig.slug || '';
+    slugInput.addEventListener('input', function () {
+      slugTouched = true;
+      gig.slug = slugInput.value.trim();
+      updatePreview();
+    });
+
+    var preview = el('p.field-hint.slug-preview');
+    function updatePreview() {
+      preview.textContent = gig.slug ? 'gig.html?slug=' + gig.slug : '';
+    }
+    updatePreview();
+
+    var dateInput = el('input', { type: 'date' });
+    dateInput.value = gig.date || '';
+    dateInput.addEventListener('input', function () { gig.date = dateInput.value; });
+
+    host.appendChild(el('section.admin-block', {}, [
+      el('h3', { text: 'Basics' }),
+      el('div.field', {}, [
+        el('label.field-label', { text: 'Slug (URL)' }),
+        el('p.field-hint', { text: 'Filled in automatically from the title.' }),
+        el('div.input-with-button', {}, [
+          slugInput,
+          el('button.button.button-ghost.button-sm', {
+            type: 'button',
+            onclick: function () { slugTouched = false; refreshAutoSlug(slugInput); updatePreview(); }
+          }, [el('i.fa-solid.fa-arrows-rotate', { 'aria-hidden': 'true' }), ' Auto'])
+        ]),
+        preview
+      ]),
+      el('div.field-row', {}, [
+        checkboxField(i18n.t('adminPublished'), gig, 'published'),
+        el('div.field', {}, [
+          el('label.field-label', { text: 'Date' }),
+          el('p.field-hint', { text: 'Leave empty if it is not scheduled yet.' }),
+          dateInput
+        ])
+      ]),
+      localisedField('Title', gig.title, {
+        onChange: function () { refreshAutoSlug(slugInput); updatePreview(); }
+      }),
+      localisedField('Venue', gig.venue),
+      localisedField('Description', gig.description, {
+        multiline: true, rows: 8, hint: 'Leave a blank line between paragraphs.'
+      }),
+      textField('External link', gig, 'link', {
+        placeholder: 'https://…', hint: 'Optional: event page, playlist, ticket link.'
+      })
+    ]));
+
+    /* Which animals this gig raised money for. Checkboxes rather than a
+       free-text field so a slug can never be mistyped into a dead link. */
+    var petsBox = el('div.check-grid');
+    pets.forEach(function (pet) {
+      var input = el('input', { type: 'checkbox' });
+      input.checked = gig.petSlugs.indexOf(pet.slug) !== -1;
+      input.addEventListener('change', function () {
+        var at = gig.petSlugs.indexOf(pet.slug);
+        if (input.checked && at === -1) gig.petSlugs.push(pet.slug);
+        else if (!input.checked && at !== -1) gig.petSlugs.splice(at, 1);
+      });
+      petsBox.appendChild(el('label.check-field', {}, [
+        input, el('span', { text: i18n.pick(pet.name) || pet.slug })
+      ]));
+    });
+
+    host.appendChild(el('section.admin-block', {}, [
+      el('h3', { text: 'In support of' }),
+      pets.length
+        ? petsBox
+        : el('p.field-hint', { text: 'No animals yet — add one first.' })
+    ]));
+
+    if (!gig.mainPhoto) gig.mainPhoto = { type: 'image', src: '', thumb: '', alt: {} };
+    host.appendChild(el('section.admin-block', {}, [
+      el('h3', { text: 'Main photo' }),
+      uploadField('Image', gig.mainPhoto, 'src', 'Used on the card and as the first gallery slide.'),
+      uploadField('Thumbnail (optional)', gig.mainPhoto, 'thumb'),
+      localisedField('Alt text', gig.mainPhoto.alt)
+    ]));
+
+    host.appendChild(repeater('Photos and video', gig.gallery,
+      function () { return { type: 'image', src: '', thumb: '', alt: {} }; },
+      function (item) {
+        return el('div', {}, [
+          selectField('Type', item, 'type', [
+            { value: 'image', label: 'Image' },
+            { value: 'video', label: 'Video file (mp4)' },
+            { value: 'youtube', label: 'YouTube' }
+          ]),
+          item.type === 'youtube'
+            ? textField('YouTube video ID', item, 'id', { placeholder: 'dQw4w9WgXcQ' })
+            : uploadField('File', item, 'src'),
+          uploadField('Thumbnail', item, 'thumb'),
+          localisedField('Alt text', item.alt)
+        ]);
+      },
+      { emptyText: 'Nothing yet. Photos and clips from the performance go here.' }
+    ));
+
+    nodes.editorWrap.hidden = false;
+    nodes.listWrap.hidden = true;
+    window.scrollTo(0, 0);
+  }
+
   function openEditor(pet, creating) {
     /* Deep copy so Cancel really discards — editing the live object would
        leave half-typed changes in the list behind. */
@@ -785,7 +931,14 @@
     /* An existing record's slug is its primary key and its public URL, so it
        counts as deliberate: never regenerate it from under the curator. */
     slugTouched = !creating;
-    buildEditor();
+    renderEditor();
+  }
+
+  /* One entry point, so the language switch and the open action agree on
+     which editor belongs to the current tab. */
+  function renderEditor() {
+    if (mode === 'gigs') buildGigEditor();
+    else buildEditor();
   }
 
   function closeEditor() {
@@ -798,6 +951,7 @@
   /* --------------------------------------------------------------- save */
 
   function save() {
+    if (mode === 'gigs') { saveGig(); return; }
     if (!draft.slug || !/^[a-z0-9-]+$/.test(draft.slug)) {
       status('Slug is required and may contain only lowercase letters, digits and dashes.', 'error');
       return;
@@ -860,13 +1014,43 @@
       .catch(function (err) { status(describeError(err), 'error'); });
   }
 
+  /* Gigs have no shared records to write first, so this is a single upsert. */
+  function saveGig() {
+    if (!draft.slug || !window.PetSlug.isValid(draft.slug)) {
+      status('Slug is required and may contain only lowercase letters, digits and dashes.', 'error');
+      return;
+    }
+    if (!i18n.pick(draft.title)) {
+      status('A title in at least one language is required.', 'error');
+      return;
+    }
+
+    var payload = JSON.parse(JSON.stringify(draft));
+    if (payload.mainPhoto && !payload.mainPhoto.src) payload.mainPhoto = null;
+    payload.gallery = payload.gallery.filter(function (g) { return g.src || g.id; });
+    if (!payload.date) payload.date = '';
+
+    status('Saving…', 'info');
+    window.PetAuth.ensureFresh()
+      .then(function () { return window.PetDB.saveGig(payload); })
+      .then(function () {
+        status(i18n.t('adminSaved'), 'ok');
+        return reload();
+      })
+      .then(closeEditor)
+      .catch(function (err) { status(describeError(err), 'error'); });
+  }
+
   function remove(pet) {
-    var name = i18n.pick(pet.name) || pet.slug;
+    var name = recordTitle(pet);
     if (!window.confirm(i18n.t('adminConfirmDelete', { name: name }))) return;
 
     status('Deleting…', 'info');
     window.PetAuth.ensureFresh()
-      .then(function () { return window.PetDB.deletePet(pet.slug); })
+      .then(function () {
+        return mode === 'gigs' ? window.PetDB.deleteGig(pet.slug)
+                               : window.PetDB.deletePet(pet.slug);
+      })
       .then(function () {
         status(i18n.t('adminDeleted'), 'ok');
         return reload();
@@ -878,6 +1062,16 @@
 
   function renderList() {
     var host = UI.clear(nodes.list);
+
+    /* Keep the heading and the new-record button in step with the tab. */
+    nodes.listHeading.textContent = mode === 'gigs' ? i18n.t('gigsTitle') : i18n.t('petsTitle');
+    nodes.newRecordLabel.textContent = mode === 'gigs' ? i18n.t('adminNewGig') : i18n.t('adminNewPet');
+    nodes.tabPets.classList.toggle('active', mode === 'pets');
+    nodes.tabGigs.classList.toggle('active', mode === 'gigs');
+    nodes.tabPets.setAttribute('aria-selected', mode === 'pets' ? 'true' : 'false');
+    nodes.tabGigs.setAttribute('aria-selected', mode === 'gigs' ? 'true' : 'false');
+
+    if (mode === 'gigs') { renderGigList(host); return; }
 
     if (!pets.length) {
       host.appendChild(el('p.field-hint', { text: 'No records yet.' }));
@@ -921,9 +1115,63 @@
     });
   }
 
+  function renderGigList(host) {
+    if (!gigs.length) {
+      host.appendChild(el('p.field-hint', {
+        text: 'No performances yet. Add one as soon as the first is booked.'
+      }));
+      return;
+    }
+
+    gigs.forEach(function (gig) {
+      var supported = gig.petSlugs
+        .map(function (slug) { return pets.filter(function (p) { return p.slug === slug; })[0]; })
+        .filter(Boolean)
+        .map(function (p) { return i18n.pick(p.name) || p.slug; });
+
+      host.appendChild(el('div.admin-entry', {}, [
+        el('img.admin-entry-thumb', {
+          src: (gig.mainPhoto && (gig.mainPhoto.thumb || gig.mainPhoto.src)) || '',
+          alt: '', loading: 'lazy'
+        }),
+        el('div.admin-entry-main', {}, [
+          el('strong', { text: i18n.pick(gig.title) || gig.slug }),
+          el('span.admin-entry-slug', { text: gig.slug }),
+          el('div.admin-entry-meta', {}, [
+            el('span.pill' + (gig.published ? '.pill-ok' : ''), {
+              text: gig.published ? i18n.t('adminPublished') : i18n.t('adminDraft')
+            }),
+            el('span.pill', { text: gig.date || 'no date' }),
+            el('span.pill', { text: gig.gallery.length + ' item(s)' }),
+            supported.length ? el('span.pill', { text: supported.join(', ') }) : null
+          ])
+        ]),
+        el('div.admin-entry-actions', {}, [
+          el('a.button.button-ghost.button-sm', {
+            href: 'gig.html?slug=' + encodeURIComponent(gig.slug),
+            target: '_blank', rel: 'noopener', text: 'View'
+          }),
+          el('button.button.button-ghost.button-sm', {
+            type: 'button', text: i18n.t('adminEdit'),
+            onclick: function () { openEditor(gig, false); }
+          }),
+          el('button.button.button-danger.button-sm', {
+            type: 'button', text: i18n.t('adminDelete'),
+            onclick: function () { remove(gig); }
+          })
+        ])
+      ]));
+    });
+  }
+
   function reload() {
-    return window.PetDB.listPets({ includeDrafts: true }).then(function (result) {
+    return Promise.all([
+      window.PetDB.listPets({ includeDrafts: true }),
+      window.PetDB.listGigs({ includeDrafts: true })
+    ]).then(function (results) {
+      var result = results[0];
       pets = result.pets;
+      gigs = results[1].gigs;
       catalogues = result.catalogues || { tags: [], curators: [], donations: [] };
       renderList();
       if (result.stale) {
@@ -1041,6 +1289,10 @@
       editorWrap: document.getElementById('editor-wrap'),
       status: document.getElementById('admin-status'),
       newPet: document.getElementById('new-pet'),
+      listHeading: document.getElementById('list-heading'),
+      newRecordLabel: document.getElementById('new-record-label'),
+      tabPets: document.getElementById('tab-pets'),
+      tabGigs: document.getElementById('tab-gigs'),
       exportSeed: document.getElementById('export-seed')
     };
 
@@ -1055,11 +1307,22 @@
     }
 
     wireAuth();
-    nodes.newPet.addEventListener('click', function () { openEditor(emptyPet(), true); });
+    nodes.newPet.addEventListener('click', function () {
+      openEditor(mode === 'gigs' ? emptyGig() : emptyPet(), true);
+    });
+
+    function switchTo(next) {
+      if (mode === next) return;
+      mode = next;
+      closeEditor();      // a draft belongs to the tab it was opened from
+      renderList();
+    }
+    nodes.tabPets.addEventListener('click', function () { switchTo('pets'); });
+    nodes.tabGigs.addEventListener('click', function () { switchTo('gigs'); });
     nodes.exportSeed.addEventListener('click', exportSeed);
     UI.onLangChange(function () {
       UI.translateStatic();
-      if (draft) buildEditor(); else renderList();
+      if (draft) renderEditor(); else renderList();
     });
 
     /* A stored session may have expired while the tab was closed; refresh

@@ -22,6 +22,7 @@ const SUITES = [
   ['render-test.mjs', 'Page rendering and restored content'],
   ['db-test.mjs', 'Data layer, Supabase, multi-pet'],
   ['qol-test.mjs', 'Slugs, QR codes, shared catalogues'],
+  ['gig-test.mjs', 'Gigs: record, main page, detail page'],
   ['admin-test.mjs', 'Admin panel and IP middleware'],
   ['sql-test.mjs', 'Generated seed and schema'],
 ];

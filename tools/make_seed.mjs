@@ -169,4 +169,39 @@ on conflict (slug) do update set
   updated_at  = now();
 `);
 
+/* ------------------------------------------------------------------ gigs */
+const gigs = sandbox.window.GIGS_SEED || [];
+if (gigs.length) {
+  const rows = gigs.map((gig) => {
+    const doc = { ...gig };
+    delete doc.slug;
+    delete doc.published;
+    delete doc.sortOrder;
+    delete doc.date;
+    delete doc.petSlugs;
+
+    const petSlugs = gig.petSlugs || [];
+    return `  (${[
+      quote(gig.slug),
+      gig.published ? 'true' : 'false',
+      Number(gig.sortOrder) || 0,
+      gig.date ? quote(gig.date) : 'null',
+      `ARRAY[${petSlugs.map(quote).join(', ')}]::text[]`,
+      json(doc),
+    ].join(', ')})`;
+  });
+
+  out.push(`insert into public.gigs (slug, published, sort_order, event_date, pet_slugs, doc)
+values
+${rows.join(',\n')}
+on conflict (slug) do update set
+  published  = excluded.published,
+  sort_order = excluded.sort_order,
+  event_date = excluded.event_date,
+  pet_slugs  = excluded.pet_slugs,
+  doc        = excluded.doc,
+  updated_at = now();
+`);
+}
+
 process.stdout.write(out.join('\n'));

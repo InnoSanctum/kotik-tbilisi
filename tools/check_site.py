@@ -68,7 +68,7 @@ def load_pets():
         "process.stdout.write(JSON.stringify({"
         "pets:s.window.PETS_SEED,content:s.window.SITE_CONTENT,"
         "tags:s.window.TAGS_SEED,curators:s.window.CURATORS_SEED,"
-        "donations:s.window.DONATIONS_SEED}));"
+        "donations:s.window.DONATIONS_SEED,gigs:s.window.GIGS_SEED}));"
     )
     try:
         # encoding is explicit: the records are Russian and Georgian, and on a
@@ -178,6 +178,57 @@ def check_catalogues(tags, curators, donations) -> None:
         check_file(donation.get("qr"), f"{where} QR")
         if not donation.get("qr"):
             note(f"{where} ({slug}): no QR image — one is generated from the link in the browser")
+
+
+def check_gig(gig, index: int, pet_slugs) -> None:
+    """A fundraising performance."""
+    slug = gig.get("slug", "")
+    where = f"gig #{index + 1} ({slug or 'no slug'})"
+
+    if not slug:
+        fail(f"{where}: missing slug")
+    elif not re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*", slug):
+        fail(f"{where}: slug {slug!r} must be lowercase latin, digits and single dashes")
+
+    check_localised(gig.get("title"), "title", where)
+    check_localised(gig.get("venue"), "venue", where, required=False)
+    check_localised(gig.get("description"), "description", where, required=False)
+
+    date = gig.get("date")
+    if date and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(date)):
+        fail(f"{where}: date {date!r} must be YYYY-MM-DD (that is what Postgres "
+             f"stores and what the page sorts on)")
+    if not date:
+        note(f"{where}: no date — it will sort after dated performances")
+
+    link = gig.get("link")
+    if link and not str(link).startswith("https://"):
+        fail(f"{where}: external link is not https — {link}")
+
+    # A gig pointing at an animal that does not exist renders a dead chip.
+    for slug_ref in gig.get("petSlugs") or []:
+        if slug_ref not in pet_slugs:
+            fail(f"{where}: petSlugs references {slug_ref!r}, which is not a pet")
+
+    main = gig.get("mainPhoto")
+    if main and main.get("src"):
+        check_file(main["src"], f"{where} mainPhoto")
+        check_file(main.get("thumb"), f"{where} mainPhoto thumb")
+    elif not (gig.get("gallery") or []):
+        note(f"{where}: no photos yet — the card shows a placeholder")
+
+    for i, item in enumerate(gig.get("gallery") or []):
+        spot = f"{where} gallery #{i + 1}"
+        if item.get("type") == "youtube":
+            if not item.get("id"):
+                fail(f"{spot}: youtube item has no video id")
+        else:
+            if not item.get("src"):
+                fail(f"{spot}: no src")
+            check_file(item.get("src"), spot)
+        check_file(item.get("thumb"), f"{spot} thumb")
+
+    scan_placeholders(json.dumps(gig, ensure_ascii=False), where)
 
 
 def check_pet(pet, index: int, catalogues) -> None:
@@ -310,20 +361,28 @@ PAGE_SCRIPTS = {
                    "assets/db.js", "assets/ui.js", "assets/home.js"],
     "pet.html":   ["config.js", "assets/i18n.js", "data/pets.js",
                    "assets/db.js", "assets/ui.js", "assets/gallery.js", "assets/pet.js"],
+    "gig.html":   ["config.js", "assets/i18n.js", "data/pets.js",
+                   "assets/db.js", "assets/ui.js", "assets/gallery.js", "assets/gig.js"],
     "admin.html": ["config.js", "assets/i18n.js", "data/pets.js", "assets/auth.js",
-                   "assets/db.js", "assets/ui.js", "assets/admin.js"],
+                   "assets/db.js", "assets/ui.js", "assets/slug.js", "assets/qr.js",
+                   "assets/admin.js"],
 }
 
 # Element ids each page's renderer looks up by hand.
 REQUIRED_IDS = {
     "index.html": ["hero-title", "hero-subtitle", "hero-image", "about-title",
                    "about-body", "search-input", "tag-filters", "pet-list",
-                   "result-count", "contacts-title", "contacts-body", "contacts-links"],
+                   "result-count", "contacts-title", "contacts-body", "contacts-links",
+                   "gigs-title", "gigs-body", "gig-list"],
     "pet.html":   ["pet-article", "pet-missing", "pet-gallery", "pet-donate",
                    "pet-badges", "pet-name", "pet-subtitle", "pet-tags",
                    "pet-story", "pet-care", "pet-docs", "pet-video",
                    "pet-sections", "pet-curator"],
+    "gig.html":   ["gig-article", "gig-missing", "gig-gallery", "gig-badges",
+                   "gig-title", "gig-meta", "gig-supports", "gig-link",
+                   "gig-description"],
     "admin.html": ["not-configured", "auth-wrap", "app-wrap", "sign-in-form",
+                   "tab-pets", "tab-gigs", "list-heading", "new-record-label",
                    "admin-email", "admin-password", "auth-error", "sign-out",
                    "admin-who", "admin-list", "list-wrap", "admin-editor",
                    "editor-wrap", "admin-status", "new-pet", "export-seed"],
@@ -472,6 +531,22 @@ def main() -> int:
                      f"SITE_CONTENT.hero.image is {hero_image!r} — update the <img> in index.html")
     else:
         note("data/pets.js defines no window.SITE_CONTENT — the main page falls back to UI strings")
+
+    gigs = data.get("gigs") or []
+    if gigs:
+        print(f"  performances: {len(gigs)}")
+        gig_slugs: dict[str, int] = {}
+        known_pets = {p.get("slug") for p in pets}
+        for i, gig in enumerate(gigs):
+            check_gig(gig, i, known_pets)
+            slug = gig.get("slug")
+            if slug:
+                if slug in gig_slugs:
+                    fail(f"duplicate gig slug {slug!r} (gigs #{gig_slugs[slug] + 1} "
+                         f"and #{i + 1})")
+                gig_slugs[slug] = i
+    else:
+        note("no performances yet — the main page shows the intro and an empty state")
 
     for page in PAGE_SCRIPTS:
         check_page(page)

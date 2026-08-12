@@ -237,6 +237,117 @@
     };
   }
 
+  /* ---------------------------------------------------------------- gigs */
+
+  function normaliseGig(raw) {
+    if (!raw) return null;
+    var doc = raw.doc && typeof raw.doc === 'object' ? raw.doc : raw;
+
+    var gallery = (doc.gallery || []).map(normaliseMedia).filter(Boolean);
+    var main = normaliseMedia(doc.mainPhoto || doc.main_photo) || gallery[0] || null;
+    if (main && !gallery.some(function (g) { return g.src === main.src; })) {
+      gallery.unshift(main);
+    }
+
+    var date = raw.event_date || doc.date || '';
+
+    return {
+      slug: raw.slug || doc.slug || '',
+      published: raw.published !== undefined ? !!raw.published
+               : (doc.published !== undefined ? !!doc.published : true),
+      sortOrder: raw.sort_order !== undefined ? raw.sort_order : (doc.sortOrder || 0),
+      date: date,
+      /* Compared as YYYY-MM-DD strings, which sort and compare correctly and
+         sidestep timezones entirely — a gig on the 15th is on the 15th
+         wherever the visitor happens to be. */
+      upcoming: !!date && date >= todayIso(),
+      petSlugs: raw.pet_slugs || doc.petSlugs || [],
+      title: asMap(doc.title),
+      venue: asMap(doc.venue),
+      description: asMap(doc.description),
+      link: doc.link || '',
+      mainPhoto: main,
+      gallery: gallery
+    };
+  }
+
+  function todayIso() {
+    var now = new Date();
+    return now.getFullYear() + '-' +
+      String(now.getMonth() + 1).padStart(2, '0') + '-' +
+      String(now.getDate()).padStart(2, '0');
+  }
+
+  function gigToRow(gig) {
+    var doc = Object.assign({}, gig);
+    delete doc.slug;
+    delete doc.published;
+    delete doc.sortOrder;
+    delete doc.date;
+    delete doc.petSlugs;
+    delete doc.upcoming;      // derived, never stored
+
+    return {
+      slug: gig.slug,
+      published: !!gig.published,
+      sort_order: gig.sortOrder || 0,
+      event_date: gig.date || null,
+      pet_slugs: gig.petSlugs || [],
+      doc: doc
+    };
+  }
+
+  /* Upcoming first (soonest first), then past (most recent first), then
+     undated. sortOrder overrides within each group for hand-pinned entries. */
+  function byGigDate(a, b) {
+    if (a.sortOrder !== b.sortOrder) return (b.sortOrder || 0) - (a.sortOrder || 0);
+    if (a.upcoming !== b.upcoming) return a.upcoming ? -1 : 1;
+    if (!a.date) return 1;
+    if (!b.date) return -1;
+    return a.upcoming ? a.date.localeCompare(b.date) : b.date.localeCompare(a.date);
+  }
+
+  function seedGigs(includeDrafts) {
+    return (window.GIGS_SEED || [])
+      .map(normaliseGig)
+      .filter(function (g) { return g && (includeDrafts || g.published); })
+      .sort(byGigDate);
+  }
+
+  /* Never rejects: an empty gig list is a normal state, not an error. */
+  function listGigs(opts) {
+    var includeDrafts = !!(opts && opts.includeDrafts);
+
+    if (!CONFIGURED) {
+      return Promise.resolve({ gigs: seedGigs(includeDrafts), stale: false });
+    }
+
+    var query = 'gigs?select=*&order=sort_order.desc';
+    if (!includeDrafts) query += '&published=eq.true';
+
+    return Promise.resolve().then(function () { return request(query); })
+      .then(function (rows) {
+        return {
+          gigs: (rows || []).map(normaliseGig).filter(Boolean).sort(byGigDate),
+          stale: false
+        };
+      })
+      .catch(function (err) {
+        console.warn('[db] gigs unavailable, using seed:', err.message);
+        return { gigs: seedGigs(includeDrafts), stale: true };
+      });
+  }
+
+  function getGig(slug) {
+    return listGigs({ includeDrafts: false }).then(function (result) {
+      var found = null;
+      for (var i = 0; i < result.gigs.length; i++) {
+        if (result.gigs[i].slug === slug) { found = result.gigs[i]; break; }
+      }
+      return { gig: found, stale: result.stale };
+    });
+  }
+
   /* Renderer shape -> database row. Used by the admin when saving. */
   function toRow(pet) {
     var doc = Object.assign({}, pet);
@@ -505,11 +616,18 @@
 
     listPets: listPets,
     getPet: getPet,
+    listGigs: listGigs,
+    getGig: getGig,
     loadCatalogues: loadCatalogues,
     siteContent: siteContent,
 
     savePet: savePet,
     deletePet: deletePet,
+    saveGig: function (gig) { return upsert('gigs', gigToRow(gig), 'slug'); },
+    deleteGig: function (slug) { return deleteFrom('gigs', 'slug', slug); },
+    normaliseGig: normaliseGig,
+    gigToRow: gigToRow,
+    seedGigs: seedGigs,
     saveCurator: saveCurator,
     saveDonation: saveDonation,
     saveTags: saveTags,

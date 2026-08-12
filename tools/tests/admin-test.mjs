@@ -45,6 +45,11 @@ function makeBackend({ signInOk = true } = {}) {
     telegram: 'https://t.me/innosanctum', instagram: null, phone: null, photo: null,
     photo_alt: {},
   }];
+  const gigsRows = [{
+    id: 'gig-1', slug: 'vake-park', published: true, sort_order: 0,
+    event_date: '2030-08-15', pet_slugs: ['kotik'],
+    doc: { title: { ru: 'Концерт в парке Ваке' }, venue: { ru: 'Парк Ваке' }, gallery: [] },
+  }];
   const donations = [{
     id: 'don-1', slug: 'kotik-bog',
     url: 'https://egreve.bog.ge/For_Kotik',
@@ -55,7 +60,8 @@ function makeBackend({ signInOk = true } = {}) {
     calls.push({ url, method: opts.method || 'GET', headers: opts.headers, body: opts.body });
 
     const method = opts.method || 'GET';
-    for (const [path, rowset] of [['tags', tags], ['curators', curators], ['donation_links', donations]]) {
+    for (const [path, rowset] of [['tags', tags], ['curators', curators],
+                                 ['donation_links', donations], ['gigs', gigsRows]]) {
       if (url.includes('/rest/v1/' + path)) {
         if (method === 'GET') return { ok: true, status: 200, json: async () => rowset };
         /* Upserts echo the row back with an id, the way PostgREST does with
@@ -571,6 +577,118 @@ console.log('\nAdmin: saving writes the shared records first');
   check('pet does not duplicate the curator into doc', petPost.doc.curator === undefined);
   check('pet does not duplicate the donation into doc', petPost.doc.donate === undefined);
   check('generated slug used', petPost.slug === 'barsik', petPost.slug);
+}
+
+/* --------------------------------------------------------------- gigs --- */
+console.log('\nAdmin: performances tab');
+{
+  const { w, d, backend } = await signedInAdmin();
+
+  check('starts on the animals tab', d.getElementById('tab-pets').classList.contains('active'));
+  check('animals listed', d.querySelectorAll('.admin-entry').length === 2);
+
+  d.getElementById('tab-gigs').dispatchEvent(new w.Event('click', { bubbles: true }));
+  await settle();
+
+  check('switches to performances', d.getElementById('tab-gigs').classList.contains('active'));
+  check('animals tab deselected',
+    d.getElementById('tab-pets').getAttribute('aria-selected') === 'false');
+  check('heading follows the tab',
+    d.getElementById('list-heading').textContent === 'Charity performances',
+    d.getElementById('list-heading').textContent);
+  check('new-record button follows the tab',
+    d.getElementById('new-record-label').textContent === 'Add a performance',
+    d.getElementById('new-record-label').textContent);
+  check('gigs listed', d.querySelectorAll('.admin-entry').length === 1,
+    `${d.querySelectorAll('.admin-entry').length}`);
+  check('gig row shows its title',
+    d.querySelector('.admin-entry').textContent.includes('Концерт в парке Ваке'));
+  /* The panel is in EN here, so the animal renders under its English name. */
+  check('gig row shows the animal it supports',
+    d.querySelector('.admin-entry').textContent.includes('Kotik'),
+    d.querySelector('.admin-entry').textContent);
+  check('gig row links to the gig page',
+    !!d.querySelector('.admin-entry a[href^="gig.html?slug="]'));
+}
+
+console.log('\nAdmin: creating a performance');
+{
+  const { w, d, backend } = await signedInAdmin();
+  d.getElementById('tab-gigs').dispatchEvent(new w.Event('click', { bubbles: true }));
+  await settle();
+  d.getElementById('new-pet').dispatchEvent(new w.Event('click', { bubbles: true }));
+  await settle();
+
+  check('gig editor opens', d.getElementById('editor-wrap').hidden === false);
+  check('it is the gig editor, not the pet one',
+    [...d.querySelectorAll('.admin-block h3')].some((h) => h.textContent === 'In support of'));
+  check('no curator block on a gig',
+    ![...d.querySelectorAll('.admin-block h3')].some((h) => h.textContent === 'Curator'));
+
+  const titleRu = d.querySelector('.lang-row input[data-lang="ru"]');
+  titleRu.value = 'Концерт на Фабрике';
+  titleRu.dispatchEvent(new w.Event('input', { bubbles: true }));
+
+  const slugInput = [...d.querySelectorAll('input')].find((i) => i.placeholder === 'vake-park-2026-08-15');
+  check('slug transliterated from the title',
+    slugInput.value === 'kontsert-na-fabrike', slugInput.value);
+
+  const dateInput = d.querySelector('input[type="date"]');
+  dateInput.value = '2030-09-01';
+  dateInput.dispatchEvent(new w.Event('input', { bubbles: true }));
+
+  /* Tick the animal it raised money for. */
+  const petBox = [...d.querySelectorAll('.check-grid input[type="checkbox"]')][0];
+  check('animals offered as checkboxes', !!petBox);
+  petBox.checked = true;
+  petBox.dispatchEvent(new w.Event('change', { bubbles: true }));
+
+  [...d.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Save')
+    .dispatchEvent(new w.Event('click', { bubbles: true }));
+  await settle(400);
+
+  const post = backend.calls.filter((c) => c.method === 'POST' && c.url.includes('/rest/v1/gigs')).pop();
+  check('saved to the gigs table', !!post);
+  const body = JSON.parse(post.body);
+  check('slug sent', body.slug === 'kontsert-na-fabrike', body.slug);
+  check('event_date is a column', body.event_date === '2030-09-01', body.event_date);
+  check('pet_slugs is a column',
+    JSON.stringify(body.pet_slugs) === JSON.stringify(['kotik']), JSON.stringify(body.pet_slugs));
+  check('title kept in doc', body.doc.title.ru === 'Концерт на Фабрике');
+  check('date not duplicated in doc', body.doc.date === undefined);
+  check('no pet fields leaked in', body.doc.curator === undefined && body.doc.tags === undefined);
+  check('returns to the list', d.getElementById('list-wrap').hidden === false);
+}
+
+console.log('\nAdmin: gig validation and deletion');
+{
+  const { w, d, backend } = await signedInAdmin();
+  d.getElementById('tab-gigs').dispatchEvent(new w.Event('click', { bubbles: true }));
+  await settle();
+  d.getElementById('new-pet').dispatchEvent(new w.Event('click', { bubbles: true }));
+  await settle();
+
+  const before = backend.calls.filter((c) => c.method === 'POST' && c.url.includes('/gigs')).length;
+  [...d.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Save')
+    .dispatchEvent(new w.Event('click', { bubbles: true }));
+  await settle();
+  check('refuses an untitled performance',
+    /Slug is required|title in at least one language/i.test(d.getElementById('admin-status').textContent),
+    d.getElementById('admin-status').textContent);
+  check('nothing sent',
+    backend.calls.filter((c) => c.method === 'POST' && c.url.includes('/gigs')).length === before);
+
+  [...d.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Cancel')
+    .dispatchEvent(new w.Event('click', { bubbles: true }));
+  await settle();
+
+  w.confirm = () => true;
+  [...d.querySelectorAll('.admin-entry button')].find((b) => b.textContent === 'Delete')
+    .dispatchEvent(new w.Event('click', { bubbles: true }));
+  await settle(300);
+  const del = backend.calls.find((c) => c.method === 'DELETE' && c.url.includes('/gigs'));
+  check('deletes from the gigs table, not pets', !!del, del && del.url);
+  check('deletes by slug', del.url.includes('slug=eq.vake-park'), del.url);
 }
 
 /* -------------------------------------------------------- middleware --- */

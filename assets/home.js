@@ -17,6 +17,7 @@
   var el = UI.el;
 
   var allPets = [];
+  var gigs = [];
   var activeTags = [];    // tag ids; a pet must carry every one of them
   var query = '';
 
@@ -179,6 +180,110 @@
     found.forEach(function (pet) { host.appendChild(petCard(pet)); });
   }
 
+  /* ------------------------------------------------------------- gigs */
+
+  function gigUrl(slug) { return 'gig.html?slug=' + encodeURIComponent(slug); }
+
+  /* '2026-08-15' -> '15 августа 2026', in the visitor's language. */
+  function formatDate(iso, lang) {
+    if (!iso) return '';
+    var parts = iso.split('-');
+    if (parts.length !== 3) return iso;
+    /* Date.UTC + timeZone:'UTC' so a gig on the 15th never renders as the 14th
+       for a visitor west of Greenwich. */
+    var when = new Date(Date.UTC(+parts[0], +parts[1] - 1, +parts[2]));
+    try {
+      return when.toLocaleDateString(lang === 'ka' ? 'ka-GE' : lang, {
+        day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC'
+      });
+    } catch (e) {
+      return iso;
+    }
+  }
+
+  function gigCard(gig) {
+    var lang = i18n.getLang();
+    var title = i18n.pick(gig.title, lang);
+    var href = gigUrl(gig.slug);
+
+    var media = el('div.pet-image');
+    if (gig.mainPhoto && gig.mainPhoto.src) {
+      media.appendChild(el('img', {
+        src: gig.mainPhoto.src,
+        alt: i18n.pick(gig.mainPhoto.alt, lang) || title,
+        loading: 'lazy', decoding: 'async'
+      }));
+    } else {
+      /* No photo yet — an announced gig still deserves a card. */
+      media.appendChild(el('div.gig-placeholder', {}, el('i.fa-solid.fa-guitar', { 'aria-hidden': 'true' })));
+    }
+    media.appendChild(el('span.badge-status.badge-' + (gig.upcoming ? 'info' : 'success'), {
+      text: gig.upcoming ? i18n.t('gigUpcoming') : i18n.t('gigPast')
+    }));
+
+    var meta = [];
+    if (gig.date) {
+      meta.push(el('span.gig-meta-item', {}, [
+        el('i.fa-solid.fa-calendar', { 'aria-hidden': 'true' }), ' ' + formatDate(gig.date, lang)
+      ]));
+    }
+    var venue = i18n.pick(gig.venue, lang);
+    if (venue) {
+      meta.push(el('span.gig-meta-item', {}, [
+        el('i.fa-solid.fa-location-dot', { 'aria-hidden': 'true' }), ' ' + venue
+      ]));
+    }
+
+    /* Which animals it raised money for, linked to their pages. */
+    var supported = gig.petSlugs
+      .map(function (slug) {
+        return allPets.filter(function (p) { return p.slug === slug; })[0];
+      })
+      .filter(Boolean);
+
+    return el('article.pet-card.gig-card', {}, [
+      el('a.pet-card-link', { href: href, 'aria-label': title }, media),
+      el('div.pet-body', {}, [
+        el('h3.pet-title', {}, el('a', { href: href, text: title })),
+        meta.length ? el('div.gig-meta', {}, meta) : null,
+        el('p.pet-description', { text: firstParagraph(i18n.pick(gig.description, lang)) }),
+        supported.length ? el('div.gig-supports', {}, [
+          el('span.gig-supports-label', { text: i18n.t('gigSupports') + ':' }),
+          el('span.tags', {}, supported.map(function (pet) {
+            return el('a.tag', { href: UI.petUrl(pet.slug), text: i18n.pick(pet.name, lang) });
+          }))
+        ]) : null,
+        el('a.button.button-ghost', { href: href }, [
+          i18n.t('gigMore'), ' ', el('i.fa-solid.fa-arrow-right', { 'aria-hidden': 'true' })
+        ])
+      ])
+    ]);
+  }
+
+  function firstParagraph(text) {
+    return String(text || '').split(/\n\s*\n/)[0].trim();
+  }
+
+  function renderGigs() {
+    var lang = i18n.getLang();
+    var content = window.PetDB.siteContent().gigs || {};
+
+    nodes.gigsTitle.textContent = i18n.pick(content.title, lang) || i18n.t('gigsTitle');
+    UI.clear(nodes.gigsBody).appendChild(UI.paragraphs(i18n.pick(content.body, lang)));
+
+    var host = UI.clear(nodes.gigList);
+    if (!gigs.length) {
+      /* No performances yet is the honest, expected state — say so plainly
+         rather than hiding the section that explains the whole idea. */
+      host.appendChild(el('div.empty-state', {}, [
+        el('i.fa-solid.fa-guitar', { 'aria-hidden': 'true' }),
+        el('p', { text: i18n.pick(content.empty, lang) || i18n.t('gigsEmpty') })
+      ]));
+      return;
+    }
+    gigs.forEach(function (gig) { host.appendChild(gigCard(gig)); });
+  }
+
   function renderSiteContent() {
     var content = window.PetDB.siteContent();
     var lang = i18n.getLang();
@@ -211,6 +316,7 @@
     renderSiteContent();
     renderTagBar();
     renderList();
+    renderGigs();
   }
 
   /* --------------------------------------------------------------- init */
@@ -229,6 +335,9 @@
       contactsTitle: document.getElementById('contacts-title'),
       contactsBody: document.getElementById('contacts-body'),
       contactsLinks: document.getElementById('contacts-links'),
+      gigsTitle: document.getElementById('gigs-title'),
+      gigsBody: document.getElementById('gigs-body'),
+      gigList: document.getElementById('gig-list'),
       year: document.getElementById('footer-year')
     };
 
@@ -248,9 +357,15 @@
 
     UI.onLangChange(renderAll);
 
-    window.PetDB.listPets().then(function (result) {
-      allPets = result.pets;
-      if (result.stale) UI.banner(i18n.t('dataStale'), 'warn');
+    /* Both in flight at once: the gig list is independent of the pet list,
+       and a slow gigs table should not hold up the cards. */
+    Promise.all([
+      window.PetDB.listPets(),
+      window.PetDB.listGigs()
+    ]).then(function (results) {
+      allPets = results[0].pets;
+      gigs = results[1].gigs;
+      if (results[0].stale) UI.banner(i18n.t('dataStale'), 'warn');
       renderAll();
     });
   }

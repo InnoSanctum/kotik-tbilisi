@@ -254,20 +254,41 @@ window.PETS_SEED = [
     donationSlug: 'kotik-bog',
     curatorSlug: 'mykhailo',
 
-    /* Free-form blocks appended under the story. Kotik's is the charity gigs. */
-    sections: [
-      {
-        icon: 'fa-guitar',
-        title: { ru: 'Благотворительные выступления', en: 'Charity guitar performances', ka: 'საქველმოქმედო გამოსვლები' },
-        body: {
-          ru: 'В ближайшее время я планирую проводить небольшие акустические выступления (играю на гитаре и пою) на улицах и площадках Тбилиси в поддержку сбора средств для Котика. Следите за обновлениями и новыми фото/видео на этой странице!',
-          en: 'I plan to perform short acoustic sets (singing and playing guitar) around the streets and venues of Tbilisi to help raise funds for Kotik. Stay tuned for updates, photos, and clips on this page!',
-          ka: 'უახლოეს მომავალში ვგეგმავ მცირე აკუსტიკურ გამოსვლებს (გიტარაზე დაკვრა და სიმღერა) თბილისის ქუჩებსა და მოედნებზე კოტიკის მხარდასაჭერად. ადევნეთ თვალი სიახლეებს და ახალ ფოტო/ვიდეო მასალას ამ გვერდზე!'
-        }
-      }
-    ]
+    /* Free-form blocks appended under the story.
+       The charity-gig text used to live here, but it describes the project
+       rather than this one cat — it now sits on the main page (SITE_CONTENT
+       .gigs below) so it covers every animal. */
+    sections: []
   }
 ];
+
+/*
+ * Fundraising performances.
+ *
+ * A project-level entity, not a pet field: one gig may raise money for several
+ * animals, and the concert series outlives any individual animal's page.
+ *
+ * Deliberately empty. Nothing has been played yet, so the main page shows the
+ * intent and an honest "first performances still to come" state rather than
+ * invented events on a page that asks strangers for money. Add real ones here
+ * or through the admin as they happen.
+ *
+ * Shape:
+ *   {
+ *     slug: 'vake-park-2026-08-15',   // latin, generated from the title
+ *     published: true,
+ *     date: '2026-08-15',             // ISO; omit if not scheduled yet
+ *     sortOrder: 0,                   // ties are broken by date, newest first
+ *     title:       { ru: '…', en: '…' },
+ *     venue:       { ru: 'Парк Ваке', en: 'Vake Park' },
+ *     description: { ru: '…' },       // blank line = new paragraph
+ *     link: 'https://…',              // optional: event page, playlist
+ *     petSlugs: ['kotik'],            // which animals it raised money for
+ *     mainPhoto: { src: '…', thumb: '…', alt: { ru: '…' } },
+ *     gallery: [ { type:'image'|'video'|'youtube', … } ]
+ *   }
+ */
+window.GIGS_SEED = [];
 
 /*
  * Site-level copy for the main page: hero, project description, contacts.
@@ -296,11 +317,35 @@ window.SITE_CONTENT = {
       ka: 'პროექტის შესახებ'
     },
     body: {
-      ru: 'Это небольшой частный проект: мы находим во дворах Тбилиси животных, которым нужна помощь, отвозим их к ветеринару, оплачиваем лечение и ищем им дом. Каждая карточка — реальное животное с настоящими анализами и чеками из клиники. Собранные деньги идут напрямую на лечение конкретного подопечного, а документы выкладываются на его странице.\n\nПомочь можно по-разному: перевести любую сумму, забрать животное домой, стать временной передержкой или просто поделиться ссылкой.',
-      en: 'This is a small, private project: we find animals that need help in the courtyards of Tbilisi, take them to the vet, pay for treatment, and look for homes for them. Every card is a real animal with real test results and real clinic receipts. Donations go directly to the treatment of that specific animal, and the paperwork is published on its page.\n\nThere are many ways to help: donate any amount, adopt, offer temporary fostering, or simply share the link.',
-      ka: 'ეს არის მცირე კერძო პროექტი: თბილისის ეზოებში ვპოულობთ ცხოველებს, რომლებსაც დახმარება სჭირდებათ, მივყავართ ვეტერინართან, ვიხდით მკურნალობის ხარჯებს და სახლს ვუძებნით. ყოველი ბარათი რეალური ცხოველია რეალური ანალიზებითა და კლინიკის ქვითრებით. შემოწირულობები პირდაპირ კონკრეტული ცხოველის მკურნალობას ხმარდება, დოკუმენტები კი მის გვერდზე ქვეყნდება.\n\nდახმარება სხვადასხვანაირად შეიძლება: გადარიცხოთ ნებისმიერი თანხა, აიყვანოთ ცხოველი, გახდეთ დროებითი მასპინძელი ან უბრალოდ გააზიაროთ ბმული.'
+      ru: 'Это небольшой частный проект: мы находим животных, которым нужна помощь, организовываем эту помощь, оплачиваем лечение и ищем им дом. Каждая карточка — реальное животное, если есть результаты обследования - прилагаются анализы и рекомендации из клиники. Собранные деньги идут на лечение и содержание конкретного подопечного, а документы выкладываются на его странице.\n\nПомочь можно по-разному: перевести любую сумму, забрать животное домой, стать временной передержкой или просто поделиться ссылкой.',
+      en: 'This is a small, private project: we find animals that need help, take them to the vet, pay for treatment, and look for homes for them. Every card is a real animal with real test results and real clinic receipts. Donations go directly to the treatment of that specific animal, and the paperwork is published on its page.\n\nThere are many ways to help: donate any amount, adopt, offer temporary fostering, or simply share the link.',
+      ka: 'ეს არის მცირე კერძო პროექტი: ვპოულობთ ცხოველებს, რომლებსაც დახმარება სჭირდებათ, მივყავართ ვეტერინართან, ვიხდით მკურნალობის ხარჯებს და სახლს ვუძებნით. ყოველი ბარათი რეალური ცხოველია რეალური ანალიზებითა და კლინიკის ქვითრებით. შემოწირულობები პირდაპირ კონკრეტული ცხოველის მკურნალობას ხმარდება, დოკუმენტები კი მის გვერდზე ქვეყნდება.\n\nდახმარება სხვადასხვანაირად შეიძლება: გადარიცხოთ ნებისმიერი თანხა, აიყვანოთ ცხოველი, გახდეთ დროებითი მასპინძელი ან უბრალოდ გააზიაროთ ბმული.'
     }
   },
+  /*
+   * Promoted from Kotik's page: the performances raise money for the project,
+   * not for one cat, so the statement belongs where every animal benefits
+   * from it. Reworded accordingly.
+   */
+  gigs: {
+    title: {
+      ru: 'Благотворительные выступления',
+      en: 'Charity performances',
+      ka: 'საქველმოქმედო გამოსვლები'
+    },
+    body: {
+      ru: 'Я играю на гитаре и пою — и планирую проводить небольшие акустические выступления на улицах и площадках Тбилиси в поддержку наших подопечных. Все собранные на них деньги идут на лечение и содержание животных с этой страницы.\n\nЗдесь будут появляться фото и видео с выступлений, а также анонсы ближайших. Если вы хотите позвать меня сыграть у себя — напишите, я буду рад.',
+      en: 'I play guitar and sing, and I plan to give short acoustic performances on the streets and in the venues of Tbilisi in support of the animals we look after. Everything raised goes to their treatment and care.\n\nPhotos and videos from the performances will appear here, along with announcements of upcoming ones. If you would like to invite me to play at your venue, do get in touch.',
+      ka: 'ვუკრავ გიტარაზე და ვმღერი — ვგეგმავ მცირე აკუსტიკურ გამოსვლებს თბილისის ქუჩებსა და სივრცეებში ჩვენი ცხოველების მხარდასაჭერად. შეგროვებული თანხა მთლიანად მათ მკურნალობასა და მოვლას ხმარდება.\n\nაქ გამოჩნდება ფოტოები და ვიდეოები გამოსვლებიდან, ასევე უახლოესი გამოსვლების ანონსები. თუ გსურთ დამპატიჟოთ დასაკრავად — მომწერეთ, სიამოვნებით.'
+    },
+    /* Shown instead of the (currently empty) list of performances. */
+    empty: {
+      ru: 'Первые выступления ещё впереди. Следите за обновлениями — фото и видео появятся здесь.',
+      en: 'The first performances are still ahead. Watch this space — photos and videos will appear here.',
+      ka: 'პირველი გამოსვლები ჯერ კიდევ წინაა. თვალი ადევნეთ — ფოტოები და ვიდეოები აქ გამოჩნდება.'
+    }
+  },
+
   contacts: {
     title: { ru: 'Контакты', en: 'Contacts', ka: 'კონტაქტი' },
     body: {

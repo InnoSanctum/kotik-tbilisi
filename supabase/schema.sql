@@ -123,6 +123,39 @@ create table if not exists public.donation_links (
   updated_at timestamptz not null default now()
 );
 
+-- ------------------------------------------------------------------- gigs
+--
+-- Fundraising performances. A project-level entity, not a pet field: one gig
+-- may raise money for several animals, and the concert series outlives any
+-- individual animal's page.
+--
+-- The animals a gig supported are held as an array of slugs rather than a
+-- join table. It is a short list that is always read whole, never queried
+-- across, and keeping it inline means adding a gig is a single insert.
+create table if not exists public.gigs (
+  id          uuid primary key default gen_random_uuid(),
+  slug        text not null unique
+              check (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'),
+  published   boolean not null default false,
+  sort_order  integer not null default 0,
+
+  -- Nullable: a planned gig may not have a date yet. Used to sort, and to
+  -- decide whether the page calls it upcoming or past.
+  event_date  date,
+
+  pet_slugs   text[] not null default '{}',
+
+  -- title, venue, description, gallery, mainPhoto, link — same localised
+  -- {lang: text} convention as pets.
+  doc         jsonb not null default '{}'::jsonb,
+
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+
+create index if not exists gigs_published_date_idx
+  on public.gigs (published, event_date desc nulls last);
+
 -- on delete set null, not cascade: removing a curator must never silently
 -- delete the animals they looked after.
 alter table public.pets
@@ -180,6 +213,11 @@ create trigger curators_touch_updated_at
 drop trigger if exists donation_links_touch_updated_at on public.donation_links;
 create trigger donation_links_touch_updated_at
   before update on public.donation_links
+  for each row execute function public.touch_updated_at();
+
+drop trigger if exists gigs_touch_updated_at on public.gigs;
+create trigger gigs_touch_updated_at
+  before update on public.gigs
   for each row execute function public.touch_updated_at();
 
 -- ------------------------------------------------------------- ip helpers
@@ -315,6 +353,26 @@ create policy "admins delete pets"
   for delete
   to authenticated
   using (public.is_admin());
+
+-- Gigs follow the same rule as pets: drafts stay invisible until published,
+-- so a performance can be written up before it is announced.
+alter table public.gigs enable row level security;
+
+drop policy if exists "public reads published gigs" on public.gigs;
+create policy "public reads published gigs"
+  on public.gigs
+  for select
+  to anon, authenticated
+  using (published = true);
+
+-- `for all` also covers SELECT, so this is what lets an admin see drafts.
+drop policy if exists "admins write gigs" on public.gigs;
+create policy "admins write gigs"
+  on public.gigs
+  for all
+  to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
 
 -- Curators, tags and donation links are readable by everyone: a pet page has
 -- to show who to contact and where to send money, and the request comes from a

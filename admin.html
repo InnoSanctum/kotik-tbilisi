@@ -82,11 +82,18 @@
             <p id="admin-status" class="admin-status" hidden></p>
 
             <div id="list-wrap">
+                <div class="admin-tabs" role="tablist">
+                    <button type="button" class="admin-tab active" id="tab-pets" role="tab"
+                            aria-selected="true" data-i18n="adminPets">Подопечные</button>
+                    <button type="button" class="admin-tab" id="tab-gigs" role="tab"
+                            aria-selected="false" data-i18n="adminGigs">Выступления</button>
+                </div>
+
                 <div class="admin-block-head">
-                    <h2 data-i18n="petsTitle">Наши подопечные</h2>
+                    <h2 id="list-heading" data-i18n="petsTitle">Наши подопечные</h2>
                     <button class="button button-primary" type="button" id="new-pet">
                         <i class="fa-solid fa-plus" aria-hidden="true"></i>
-                        <span data-i18n="adminNewPet">Добавить подопечного</span>
+                        <span id="new-record-label" data-i18n="adminNewPet">Добавить подопечного</span>
                     </button>
                 </div>
                 <div id="admin-list" class="admin-list"></div>

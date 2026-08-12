@@ -90,7 +90,10 @@ console.log('\nindex.html (default language, RU)');
 
   search.value = 'zzzz';
   search.dispatchEvent(new win.Event('input', { bubbles: true }));
-  check('search "zzzz" shows empty state', doc.querySelectorAll('.empty-state').length === 1);
+  /* Scoped to the pet grid: the gigs section renders its own empty state
+     while there are no performances yet. */
+  check('search "zzzz" shows empty state',
+    doc.querySelectorAll('#pet-list .empty-state').length === 1);
 
   search.value = 'fiv';
   search.dispatchEvent(new win.Event('input', { bubbles: true }));
@@ -164,8 +167,10 @@ console.log('\npet.html?slug=kotik');
   check('instagram handle correct',
     !!doc.querySelector('#pet-curator a[href="https://www.instagram.com/mserhiievskyi/"]'));
 
-  check('charity gigs section restored',
-    doc.getElementById('pet-sections').textContent.includes('акустические выступления'));
+  /* The charity-gig text describes the project, not this one cat, so it now
+     lives on the main page. Kotik's own extra-sections block is empty. */
+  check('gig blurb no longer duplicated on the pet page',
+    doc.getElementById('pet-sections').hasAttribute('hidden'));
 
   check('tags link back to a filtered list',
     doc.querySelector('#pet-tags a')?.getAttribute('href')?.startsWith('index.html?tag='));

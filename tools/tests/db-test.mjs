@@ -198,7 +198,10 @@ console.log('\nMulti-pet behaviour');
 
   const fiv = [...d.querySelectorAll('.filter-pill')].find((p) => p.textContent.startsWith('ВИК'));
   fiv.dispatchEvent(new w.Event('click', { bubbles: true }));
-  check('contradictory tags yield the empty state', d.querySelectorAll('.empty-state').length === 1);
+  /* Scoped to the pet grid: the gigs section renders its own empty state
+     while there are no performances yet. */
+  check('contradictory tags yield the empty state',
+    d.querySelectorAll('#pet-list .empty-state').length === 1);
 }
 
 /* ---- ?tag= deep link ---- */

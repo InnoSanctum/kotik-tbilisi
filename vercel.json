@@ -3,7 +3,8 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "rewrites": [
-    { "source": "/pet/:slug", "destination": "/pet.html" }
+    { "source": "/pet/:slug", "destination": "/pet.html" },
+    { "source": "/gig/:slug", "destination": "/gig.html" }
   ],
   "headers": [
     {

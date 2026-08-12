@@ -458,6 +458,41 @@ console.log('\nAdmin: curator and donation suggestions');
     urlInput && urlInput.value === 'https://egreve.bog.ge/For_Kotik', urlInput && urlInput.value);
 }
 
+console.log('\nAdmin: new curator ids avoid collisions');
+{
+  const { w, d } = await signedInAdmin();
+  d.getElementById('new-pet').dispatchEvent(new w.Event('click', { bubbles: true }));
+  await settle();
+
+  const curatorBlock = () => [...d.querySelectorAll('section.admin-block')]
+    .find((s) => s.querySelector('h3') && s.querySelector('h3').textContent.trim() === 'Curator');
+
+  curatorBlock().querySelector('select').value = ' new';
+  curatorBlock().querySelector('select').dispatchEvent(new w.Event('change', { bubbles: true }));
+  await settle();
+
+  const block = curatorBlock();
+  const idField = [...block.querySelectorAll('input')].find((i) => i.placeholder === 'mykhailo');
+  const nameField = [...block.querySelectorAll('.field')]
+    .find((f) => f.querySelector('.field-label') && f.querySelector('.field-label').textContent.trim() === 'Name')
+    .querySelector('.lang-row input[data-lang="ru"]');
+
+  nameField.value = 'Анна Петрова';
+  nameField.dispatchEvent(new w.Event('input', { bubbles: true }));
+  check('new curator id transliterated from the name',
+    idField.value === 'anna-petrova', idField.value);
+
+  /* A second person also called Mykhailo must not overwrite the existing
+     curator — the id is the upsert key, so a clash would take every animal
+     they curate with it. */
+  idField.value = '';
+  idField.dispatchEvent(new w.Event('input', { bubbles: true }));
+  nameField.value = 'Mykhailo';
+  nameField.dispatchEvent(new w.Event('input', { bubbles: true }));
+  check('a clashing curator name gets a suffixed id, not the existing one',
+    idField.value === 'mykhailo-2', idField.value);
+}
+
 console.log('\nAdmin: QR preview');
 {
   const { w, d } = await signedInAdmin();

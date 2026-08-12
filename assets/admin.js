@@ -367,10 +367,17 @@
 
       fields.appendChild(localisedField('Name', c.name, {
         onChange: function () {
-          if (!c.slug) {
-            slugInput.value = window.PetSlug.slugify(i18n.pick(c.name, i18n.FALLBACK) || i18n.pick(c.name));
-            c.slug = slugInput.value;
-          }
+          /* Only ever fill a blank id: a selected curator's id is their key,
+             and rewriting it would point the pet at a different person. */
+          if (c.slug) return;
+          /* unique(), not slugify(): the id is the upsert key, so a second
+             curator also called Михаил would otherwise silently overwrite the
+             first one — and take every animal they curate with them. */
+          slugInput.value = window.PetSlug.unique(
+            i18n.pick(c.name, i18n.FALLBACK) || i18n.pick(c.name),
+            catalogues.curators.map(function (r) { return r.slug; })
+          );
+          c.slug = slugInput.value;
         }
       }));
       fields.appendChild(uploadField('Photo', c, 'photo'));
@@ -418,8 +425,13 @@
       urlInput.value = d.url || '';
       urlInput.addEventListener('input', function () {
         d.url = urlInput.value.trim();
+        /* Same reasoning as the curator id: only fill a blank one, and make it
+           unique so a second link never overwrites an existing one. */
         if (!d.slug) {
-          slugInput.value = window.PetSlug.slugify(d.url.replace(/^https?:\/\//, ''));
+          slugInput.value = window.PetSlug.unique(
+            d.url.replace(/^https?:\/\//, ''),
+            catalogues.donations.map(function (r) { return r.slug; })
+          );
           d.slug = slugInput.value;
         }
         drawQr();

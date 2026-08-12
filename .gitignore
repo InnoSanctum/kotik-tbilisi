@@ -4,3 +4,7 @@ __pycache__/
 
 # scratch files
 *.bak
+
+# the optional test suite's dependency (the site itself has none)
+tools/tests/node_modules/
+tools/tests/package-lock.json

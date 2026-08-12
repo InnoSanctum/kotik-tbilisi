@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Help Pets | Помощь животным</title>
-    <meta name="description" content="Платформа помощи бездомным питомцам в Тбилиси. Карточки животных, истории, галереи и контакты кураторов.">
+    <title>Помощь животным в Тбилиси | Help Pets Tbilisi</title>
+    <meta name="description" content="Частный проект помощи уличным животным в Тбилиси: лечение, передержка и поиск дома. Карточки подопечных с документами из клиники.">
     <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
     <link rel="alternate icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
     <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
+    <meta name="theme-color" content="#4f46e5">
+    <link rel="preload" as="image" href="media/kotik-2026-03-12.webp">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Noto+Sans+Georgian:wght@400;600;700&display=swap" rel="stylesheet">
@@ -15,46 +17,96 @@
     <link rel="stylesheet" href="assets/styles.css">
 </head>
 <body>
+    <a class="skip-link" href="#main">К содержанию</a>
+
     <header>
         <div class="nav-container">
             <a href="index.html" class="logo">
-                <i class="fa-solid fa-paw"></i><span id="nav-logo">Help Pets</span>
+                <i class="fa-solid fa-paw" aria-hidden="true"></i>
+                <span data-i18n="brandShort">Помощь животным</span>
             </a>
-            <div class="lang-switcher">
+            <nav class="site-nav">
+                <a href="#pets" data-i18n="navPets">Питомцы</a>
+                <a href="#about" data-i18n="navAbout">О проекте</a>
+                <a href="#contacts" data-i18n="navContacts">Контакты</a>
+            </nav>
+            <div class="lang-switcher" role="group" aria-label="Language">
                 <button type="button" class="lang-btn" data-lang="ru">RU</button>
                 <button type="button" class="lang-btn" data-lang="en">EN</button>
-                <button type="button" class="lang-btn" data-lang="ka">GE</button>
+                <button type="button" class="lang-btn" data-lang="ka">KA</button>
             </div>
-            <a class="button" href="admin.html">Admin</a>
         </div>
     </header>
 
-    <main>
-        <section class="page-title">
-            <h1 id="page-title">Support multiple pets</h1>
-            <p id="project-description">These profiles show animals who need help and support. Click a card to open the full profile, gallery, contacts, and documents.</p>
+    <div id="site-banner" hidden></div>
+
+    <main id="main">
+        <section class="hero">
+            <div class="hero-text">
+                <h1 id="hero-title">Помощь уличным животным в Тбилиси</h1>
+                <p id="hero-subtitle">Лечение, передержка и поиск дома для тех, у кого нет своего.</p>
+                <a class="button button-primary" href="#pets" data-i18n="heroCta">Посмотреть подопечных</a>
+            </div>
+            <div class="hero-media">
+                <img id="hero-image" src="media/kotik-2026-03-12.webp"
+                     alt="Помощь уличным животным в Тбилиси" decoding="async">
+            </div>
         </section>
 
-        <div class="hero-card">
-            <div class="search-panel">
-                <label for="search-input" id="search-label">Filter by keyword</label>
-                <input id="search-input" type="search" placeholder="Search by name, tag, or status..." aria-labelledby="search-label">
-            </div>
-            <div class="filter-bar">
-                <p>Tags:</p>
-                <div id="tag-filters" class="tags"></div>
-            </div>
-        </div>
+        <section class="about-section" id="about">
+            <h2 id="about-title">О проекте</h2>
+            <div id="about-body" class="prose"></div>
+        </section>
 
-        <section class="pet-grid" id="pet-list"></section>
+        <section class="pets-section" id="pets">
+            <div class="section-head">
+                <h2 data-i18n="petsTitle">Наши подопечные</h2>
+                <p data-i18n="petsSubtitle">Нажмите на карточку, чтобы открыть полную историю, галерею и контакты куратора.</p>
+            </div>
+
+            <div class="search-panel">
+                <label class="search-field">
+                    <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                    <span class="visually-hidden" data-i18n="searchLabel">Поиск</span>
+                    <input id="search-input" type="search" autocomplete="off"
+                           data-i18n-attr="placeholder:searchPlaceholder,aria-label:searchLabel"
+                           placeholder="Имя, тег или город…">
+                </label>
+
+                <div class="filter-bar">
+                    <span class="filter-label" data-i18n="tagsLabel">Теги</span>
+                    <div id="tag-filters" class="filter-pills"></div>
+                </div>
+
+                <p id="result-count" class="result-count" aria-live="polite"></p>
+            </div>
+
+            <div class="pet-grid" id="pet-list"></div>
+        </section>
+
+        <section class="contacts-section" id="contacts">
+            <h2 id="contacts-title">Контакты</h2>
+            <p id="contacts-body"></p>
+            <div id="contacts-links" class="author-contacts"></div>
+        </section>
     </main>
 
     <footer>
-        <p>© 2026 Помощь животным в Тбилиси. Все данные можно редактировать локально и публиковать в репозитории.</p>
+        <p>
+            © <span id="footer-year">2026</span>
+            <span data-i18n="footerRights">Сбор средств для уличных животных, Тбилиси.</span>
+        </p>
+        <p class="footer-sub">
+            <a href="admin.html">Admin</a>
+        </p>
     </footer>
 
-    <script src="pets.js"></script>
-    <script src="assets/data.js"></script>
-    <script src="assets/site.js"></script>
+    <!-- Order matters: config -> i18n -> data -> helpers -> page renderer. -->
+    <script src="config.js"></script>
+    <script src="assets/i18n.js"></script>
+    <script src="data/pets.js"></script>
+    <script src="assets/db.js"></script>
+    <script src="assets/ui.js"></script>
+    <script src="assets/home.js"></script>
 </body>
 </html>

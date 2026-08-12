@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pet profile</title>
-    <meta name="description" content="Animal profile with gallery, description, contact curator and documents.">
+    <!-- Title and description are replaced per pet by assets/pet.js. -->
+    <title>Подопечный | Помощь животным в Тбилиси</title>
+    <meta name="description" content="История подопечного, галерея, документы из клиники и контакты куратора.">
     <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
     <link rel="alternate icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
     <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
+    <meta name="theme-color" content="#4f46e5">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Noto+Sans+Georgian:wght@400;600;700&display=swap" rel="stylesheet">
@@ -15,78 +17,83 @@
     <link rel="stylesheet" href="assets/styles.css">
 </head>
 <body>
+    <a class="skip-link" href="#main">К содержанию</a>
+
     <header>
         <div class="nav-container">
             <a href="index.html" class="logo">
-                <i class="fa-solid fa-paw"></i><span id="nav-logo">Help Pets</span>
+                <i class="fa-solid fa-paw" aria-hidden="true"></i>
+                <span data-i18n="brandShort">Помощь животным</span>
             </a>
-            <div class="lang-switcher">
+            <nav class="site-nav">
+                <a href="index.html#pets" data-i18n="navPets">Питомцы</a>
+                <a href="index.html#about" data-i18n="navAbout">О проекте</a>
+                <a href="index.html#contacts" data-i18n="navContacts">Контакты</a>
+            </nav>
+            <div class="lang-switcher" role="group" aria-label="Language">
                 <button type="button" class="lang-btn" data-lang="ru">RU</button>
                 <button type="button" class="lang-btn" data-lang="en">EN</button>
-                <button type="button" class="lang-btn" data-lang="ka">GE</button>
+                <button type="button" class="lang-btn" data-lang="ka">KA</button>
             </div>
         </div>
     </header>
 
-    <main>
-        <nav class="hero-card">
-            <a id="back-link" class="button" href="index.html">Back to pet list</a>
-        </nav>
+    <div id="site-banner" hidden></div>
 
-        <section class="detail-hero detail-grid" id="pet-detail">
-            <div class="detail-card">
-                <div class="detail-meta">
-                    <h1 id="detail-title">Kotik</h1>
-                    <h2 id="detail-subtitle">Street cat from Tbilisi</h2>
-                    <div class="badge-row">
-                        <span id="detail-location" class="tag-pill">Tbilisi</span>
-                        <span id="detail-status" class="tag-pill warning">Help needed</span>
+    <main id="main">
+        <a class="back-link" href="index.html">
+            <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+            <span data-i18n="backToList">Ко всем подопечным</span>
+        </a>
+
+        <!-- Shown only when ?slug= matches nothing. -->
+        <div id="pet-missing" hidden></div>
+
+        <article id="pet-article" hidden>
+            <!-- Left column: gallery + donate. Right column: identity + story. -->
+            <div class="detail-grid">
+                <div class="detail-media">
+                    <div id="pet-gallery" class="gallery-card" tabindex="0"></div>
+                    <aside id="pet-donate" class="donate-box"></aside>
+                </div>
+
+                <div class="detail-main">
+                    <div class="info-card">
+                        <div id="pet-badges" class="badge-row"></div>
+                        <h1 id="pet-name"></h1>
+                        <p id="pet-subtitle" class="subtitle"></p>
+                        <div id="pet-tags" class="tags"></div>
                     </div>
-                    <div id="detail-tags" class="tags"></div>
+
+                    <section id="pet-story" class="detail-section"></section>
                 </div>
-                <div class="detail-section">
-                    <h3><i class="fa-solid fa-info-circle"></i> Описание</h3>
-                    <p id="detail-description">Full profile description will appear here.</p>
-                </div>
-                <div class="detail-section docs-grid" id="docs-grid"></div>
             </div>
 
-            <div class="detail-card">
-                <div class="main-img-container">
-                    <div class="img-wrapper">
-                        <img id="main-image" src="media/kotik-2026-03-12.webp" alt="Main pet image">
-                    </div>
-                </div>
-                <div class="contact-card">
-                    <h3><i class="fa-solid fa-phone"></i> Контакты куратора</h3>
-                    <div id="contacts"></div>
-                </div>
-                <div class="video-card" id="video-section">
-                    <h3><i class="fa-solid fa-video"></i> Видео / Reel</h3>
-                    <div class="video-embed"></div>
-                </div>
-                <div class="status-card">
-                    <h3 id="donate-title"><i class="fa-solid fa-heart"></i> Пожертвование</h3>
-                    <a id="donate-link" class="button" href="#" target="_blank" rel="noopener noreferrer">Перевести помощь</a>
-                    <div class="qr-block" id="donate-qr-block">
-                        <img id="donate-qr" src="" alt="QR code for donation" hidden>
-                        <p id="qr-caption" class="qr-caption"></p>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <div class="notes" id="not-found" hidden>
-            Pet not found. Return to the list and select another profile.
-        </div>
+            <!-- Full page width from here on. -->
+            <section id="pet-care" class="detail-section card-section"></section>
+            <section id="pet-docs" class="detail-section card-section"></section>
+            <section id="pet-video" class="detail-section card-section"></section>
+            <div id="pet-sections"></div>
+            <section id="pet-curator" class="detail-section card-section"></section>
+        </article>
     </main>
 
     <footer>
-        <p>© 2026 Help Pets. Profiles are generated from local JSON data and work on GitHub Pages.</p>
+        <p>
+            © <span id="footer-year">2026</span>
+            <span data-i18n="footerRights">Сбор средств для уличных животных, Тбилиси.</span>
+        </p>
+        <p class="footer-sub">
+            <a href="index.html" data-i18n="backToList">Ко всем подопечным</a>
+        </p>
     </footer>
 
-    <script src="pets.js"></script>
-    <script src="assets/data.js"></script>
+    <script src="config.js"></script>
+    <script src="assets/i18n.js"></script>
+    <script src="data/pets.js"></script>
+    <script src="assets/db.js"></script>
+    <script src="assets/ui.js"></script>
+    <script src="assets/gallery.js"></script>
     <script src="assets/pet.js"></script>
 </body>
 </html>

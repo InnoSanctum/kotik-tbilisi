@@ -3,83 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pet admin</title>
-    <meta name="description" content="Admin interface for editing pet manifest records locally.">
+    <title>Admin | Помощь животным</title>
+    <!-- Admin pages must never be indexed, whichever host this lands on. -->
+    <meta name="robots" content="noindex, nofollow">
     <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
     <link rel="alternate icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Noto+Sans+Georgian:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="assets/styles.css">
 </head>
-<body>
+<body class="admin-body">
     <header>
         <div class="nav-container">
             <a href="index.html" class="logo">
-                <i class="fa-solid fa-paw"></i><span id="nav-logo">Help Pets</span>
+                <i class="fa-solid fa-paw" aria-hidden="true"></i>
+                <span data-i18n="brandShort">Помощь животным</span>
             </a>
-            <div class="lang-switcher">
+            <div class="lang-switcher" role="group" aria-label="Language">
                 <button type="button" class="lang-btn" data-lang="ru">RU</button>
                 <button type="button" class="lang-btn" data-lang="en">EN</button>
-                <button type="button" class="lang-btn" data-lang="ka">GE</button>
+                <button type="button" class="lang-btn" data-lang="ka">KA</button>
             </div>
         </div>
     </header>
 
-    <main>
-        <section class="page-title">
-            <h1 id="admin-title">Pet data admin panel</h1>
-            <p id="admin-description">Edit pet records locally and export JSON for updating the repository manifest.</p>
+    <main class="admin-main">
+        <!-- State 1: config.js has no Supabase project yet. -->
+        <section id="not-configured" class="admin-panel" hidden>
+            <h1 data-i18n="adminTitle">Панель управления</h1>
+            <p class="admin-warning" data-i18n="adminNotConfigured">
+                Supabase не настроен. Заполните config.js, чтобы включить редактирование.
+            </p>
+            <p class="field-hint">
+                See <code>supabase/schema.sql</code> and the “Database setup”
+                section of <code>README.md</code>. Until then the site renders
+                from <code>data/pets.js</code>.
+            </p>
         </section>
 
-        <section class="admin-panel">
-            <div id="entry-list"></div>
-            <button type="button" id="save-record" class="button">Save record</button>
-            <div class="search-panel" style="margin-top:1.5rem;">
-                <label id="label-record-slug" for="record-slug">Record slug</label>
-                <input id="record-slug" type="text" placeholder="kotik">
-                <label id="label-record-title-ru" for="record-title-ru">Title (RU)</label>
-                <input id="record-title-ru" type="text">
-                <label id="label-record-title-en" for="record-title-en">Title (EN)</label>
-                <input id="record-title-en" type="text">
-                <label id="label-record-title-ka" for="record-title-ka">Title (KA)</label>
-                <input id="record-title-ka" type="text">
-                <label id="label-record-subtitle-ru" for="record-subtitle-ru">Subtitle (RU)</label>
-                <input id="record-subtitle-ru" type="text">
-                <label id="label-record-subtitle-en" for="record-subtitle-en">Subtitle (EN)</label>
-                <input id="record-subtitle-en" type="text">
-                <label id="label-record-subtitle-ka" for="record-subtitle-ka">Subtitle (KA)</label>
-                <input id="record-subtitle-ka" type="text">
-                <label id="label-record-main-image" for="record-main-image">Main image URL</label>
-                <input id="record-main-image" type="text" placeholder="media/kotik-2026-03-12.webp">
-                <label id="label-record-tags" for="record-tags">Tags (comma separated)</label>
-                <input id="record-tags" type="text" placeholder="FIV+, Young, Tbilisi">
-                <label id="label-record-donate-link" for="record-donate-link">Donation link</label>
-                <input id="record-donate-link" type="text" placeholder="https://example.com/donate">
-                <label id="label-record-donate-qr" for="record-donate-qr">QR code image URL</label>
-                <input id="record-donate-qr" type="text" placeholder="assets/qr_code.png">
+        <!-- State 2: signed out. -->
+        <section id="auth-wrap" class="admin-panel auth-panel" hidden>
+            <h1 data-i18n="adminSignIn">Вход</h1>
+            <form id="sign-in-form" autocomplete="on">
+                <div class="field">
+                    <label class="field-label" for="admin-email" data-i18n="adminEmail">Электронная почта</label>
+                    <input id="admin-email" type="email" name="email" autocomplete="username" required>
+                </div>
+                <div class="field">
+                    <label class="field-label" for="admin-password" data-i18n="adminPassword">Пароль</label>
+                    <input id="admin-password" type="password" name="password" autocomplete="current-password" required>
+                </div>
+                <p id="auth-error" class="admin-status admin-status-error" hidden></p>
+                <button class="button button-primary" type="submit" data-i18n="adminSignInBtn">Войти</button>
+            </form>
+            <p class="field-hint">
+                Write access is enforced by Postgres row-level security, not by
+                this page. Signing out of a shared computer is still a good idea.
+            </p>
+        </section>
+
+        <!-- State 3: signed in. -->
+        <section id="app-wrap" hidden>
+            <div class="admin-topbar">
+                <div>
+                    <h1 data-i18n="adminTitle">Панель управления</h1>
+                    <p class="field-hint" id="admin-who"></p>
+                </div>
+                <div class="admin-topbar-actions">
+                    <button class="button button-ghost button-sm" type="button" id="export-seed">
+                        <i class="fa-solid fa-download" aria-hidden="true"></i> Export seed
+                    </button>
+                    <button class="button button-ghost button-sm" type="button" id="sign-out" data-i18n="adminSignOut">Выйти</button>
+                </div>
             </div>
-        </section>
 
-        <section class="admin-panel" style="margin-top:1.5rem;">
-            <h3>Export JSON</h3>
-            <p>Copy the generated manifest and paste it into pets.js under <code>window.PET_DATA</code>.</p>
-            <textarea id="manifest-output" rows="12" style="width:100%; font-family: monospace;"></textarea>
-            <div style="display:flex; gap:1rem; margin-top:1rem; flex-wrap:wrap;">
-                <button id="copy-manifest" type="button" class="button">Copy manifest</button>
-                <span id="copy-status" style="color:#334155;"></span>
+            <p id="admin-status" class="admin-status" hidden></p>
+
+            <div id="list-wrap">
+                <div class="admin-block-head">
+                    <h2 data-i18n="petsTitle">Наши подопечные</h2>
+                    <button class="button button-primary" type="button" id="new-pet">
+                        <i class="fa-solid fa-plus" aria-hidden="true"></i>
+                        <span data-i18n="adminNewPet">Добавить подопечного</span>
+                    </button>
+                </div>
+                <div id="admin-list" class="admin-list"></div>
+            </div>
+
+            <div id="editor-wrap" hidden>
+                <div id="admin-editor" class="admin-editor"></div>
             </div>
         </section>
     </main>
 
     <footer>
-        <p>© 2026 Help Pets admin. This page is for local manifest editing only.</p>
+        <p class="footer-sub"><a href="index.html">← Site</a></p>
     </footer>
 
-    <script src="pets.js"></script>
-    <script src="assets/data.js"></script>
+    <script src="config.js"></script>
+    <script src="assets/i18n.js"></script>
+    <script src="data/pets.js"></script>
+    <script src="assets/auth.js"></script>
+    <script src="assets/db.js"></script>
+    <script src="assets/ui.js"></script>
     <script src="assets/admin.js"></script>
 </body>
 </html>

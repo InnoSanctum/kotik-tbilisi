@@ -1,0 +1,13 @@
+{
+  "name": "pet-site-tests",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Optional regression tests. The site itself has no dependencies and does not need these to run.",
+  "scripts": {
+    "test": "node run-all.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "^24.0.0"
+  }
+}
